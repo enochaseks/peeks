@@ -19,36 +19,53 @@ import {
   useDisclosure,
   Tab,
   IconButton,
-  useToast
+  useToast,
+  Menu,
+  MenuButton,
+  MenuList,
+  MenuItem,
+  AlertDialog,
+  AlertDialogOverlay,
+  AlertDialogContent,
+  AlertDialogHeader,
+  AlertDialogBody,
+  AlertDialogFooter,
+  Spinner,
+  Alert,
+  AlertIcon,
+  Input
 } from '@chakra-ui/react';
-import { auth } from '../firebase'; // Assuming you have firebase auth initialized here
-import EditProfileDialog from './EditProfileDialog'; // We will create this next
-import { ArrowBackIcon } from '@chakra-ui/icons'; // Added icon imports
-import { FiShare } from 'react-icons/fi'; // Import Share icon from react-icons
-import { useNavigate } from 'react-router-dom'; // Added useNavigate import
-// Import Firestore functions and db
+import { auth, firebaseApp } from '../firebase';
+import { signOut, deleteUser, EmailAuthProvider, reauthenticateWithCredential } from 'firebase/auth';
+import EditProfileDialog from './EditProfileDialog';
+import { ArrowBackIcon, SettingsIcon } from '@chakra-ui/icons';
+import { FiShare } from 'react-icons/fi';
+import { useNavigate } from 'react-router-dom';
 import { doc, setDoc, getDoc } from 'firebase/firestore';
 import { db } from '../firebase';
 
 const ProfilePage = () => {
-  const user = auth.currentUser; // Get the current logged-in user
-  const toast = useToast(); // Called useToast hook
-  const [isAnonymous, setIsAnonymous] = useState(false); // State for anonymous toggle
-  // Placeholder state for profile details (will come from backend usually)
+  const user = auth.currentUser;
+  const toast = useToast();
+  const [isAnonymous, setIsAnonymous] = useState(false);
   const [profile, setProfile] = useState({
     name: user?.displayName || user?.email || 'User',
     bio: 'Tell us about yourself...',
     followers: 0,
     following: 0,
-    // You might add an avatarUrl and isAnonymous field here later when fetching profile
-    isAnonymous: false, // Initialize isAnonymous state based on fetched profile data
+    isAnonymous: false,
   });
 
-  // State and handlers for the Edit Profile Dialog
   const { isOpen, onOpen, onClose } = useDisclosure();
-  const navigate = useNavigate(); // Initialize navigate
+  const { isOpen: isSettingsMenuOpen, onOpen: onSettingsMenuOpen, onClose: onSettingsMenuClose } = useDisclosure();
+  const { isOpen: isDeleteAlertOpen, onOpen: onDeleteAlertOpen, onClose: onDeleteAlertClose } = useDisclosure();
+  const cancelRef = React.useRef();
+  const [isDeleting, setIsDeleting] = useState(false);
+  const [reauthPassword, setReauthPassword] = useState('');
+  const [showReauthPrompt, setShowReauthPrompt] = useState(false);
 
-  // --- Fetch profile data on component mount ---
+  const navigate = useNavigate();
+
   useEffect(() => {
     const fetchProfileData = async () => {
       if (user) {
@@ -60,17 +77,15 @@ const ProfilePage = () => {
             const userData = userDocSnap.data();
             setProfile(prevProfile => ({
               ...prevProfile,
-              name: userData.username || prevProfile.name, // Update name if available
-              bio: userData.bio || prevProfile.bio, // Update bio if available
+              name: userData.username || prevProfile.name,
+              bio: userData.bio || prevProfile.bio,
               followers: userData.followers || prevProfile.followers,
               following: userData.following || prevProfile.following,
-              isAnonymous: userData.isAnonymous || false, // Set anonymous state
+              isAnonymous: userData.isAnonymous || false,
             }));
-            setIsAnonymous(userData.isAnonymous || false); // Also update the separate isAnonymous state
+            setIsAnonymous(userData.isAnonymous || false);
           } else {
             console.log('No such user document!');
-            // Optionally, create the user document here if it doesn't exist
-            // setDoc(userDocRef, { username: user.displayName || user.email, ... });
             toast({
               title: 'Profile not found',
               description: 'Your user profile document is missing. It will be created when you update your profile.',
@@ -93,10 +108,8 @@ const ProfilePage = () => {
     };
 
     fetchProfileData();
-  }, [user, db, toast]); // Add dependencies
-  // -------------------------------------------
+  }, [user, db, toast]);
 
-  // --- Handle Anonymous Toggle and update Firestore ---
   const handleAnonymousToggle = async () => {
     const newAnonymousStatus = !isAnonymous;
     setIsAnonymous(newAnonymousStatus);
@@ -104,10 +117,9 @@ const ProfilePage = () => {
     if (user) {
       try {
         const userDocRef = doc(db, 'users', user.uid);
-        // Use setDoc with merge: true to create or update the document
         await setDoc(userDocRef, {
           isAnonymous: newAnonymousStatus,
-        }, { merge: true }); // Use merge: true
+        }, { merge: true });
 
         toast({
           title: newAnonymousStatus ? 'Profile is now anonymous' : 'Profile is now public',
@@ -117,9 +129,7 @@ const ProfilePage = () => {
         });
       } catch (error) {
         console.error('Error updating anonymous status:', error);
-        // Revert the toggle state if the update fails
         setIsAnonymous(isAnonymous);
-        // Show a toast error message
         toast({
           title: 'Error',
           description: 'Failed to update anonymous status.',
@@ -130,29 +140,24 @@ const ProfilePage = () => {
       }
     }
   };
-  // ---------------------------------------------------
 
   const handleSaveProfile = (updatedProfile) => {
-    console.log('Saving profile:', updatedProfile);
-    // In a real app, you would update the user's document in Firestore here
-    // using setDoc with merge: true
     if (user) {
       try {
         const userDocRef = doc(db, 'users', user.uid);
-         // Use setDoc with merge: true to update the document
-         setDoc(userDocRef, {
-          username: updatedProfile.name, // Assuming name from dialog is username
+        setDoc(userDocRef, {
+          username: updatedProfile.name,
           bio: updatedProfile.bio,
-         }, { merge: true }); // Use merge: true
+        }, { merge: true });
 
-         toast({
+        toast({
           title: 'Profile updated',
           status: 'success',
           duration: 3000,
           isClosable: true,
-         });
-         setProfile(updatedProfile); // Update local state after successful save
-         onClose();
+        });
+        setProfile(updatedProfile);
+        onClose();
       } catch (error) {
         console.error('Error updating profile:', error);
         toast({
@@ -164,14 +169,12 @@ const ProfilePage = () => {
         });
       }
     } else {
-       setProfile(updatedProfile); // Update local state even if not logged in (for demo)
-       onClose();
+      setProfile(updatedProfile);
+      onClose();
     }
   };
 
   const handleShareProfile = () => {
-    // Implement share functionality here
-    console.log('Sharing profile...');
     if (navigator.share) {
       navigator.share({
         title: `${profile.name}'s Profile on Peeks`,
@@ -187,7 +190,106 @@ const ProfilePage = () => {
     }
   };
 
-  // Placeholder content for tabs
+  const handleLogout = async () => {
+    try {
+      await signOut(auth);
+      toast({
+        title: 'Logged out',
+        description: 'You have been successfully logged out.',
+        status: 'success',
+        duration: 3000,
+        isClosable: true,
+      });
+      navigate('/login');
+    } catch (error) {
+      console.error('Error logging out:', error);
+      toast({
+        title: 'Logout Failed',
+        description: error.message,
+        status: 'error',
+        duration: 3000,
+        isClosable: true,
+      });
+    }
+  };
+
+  const handleDeleteAccount = async () => {
+    if (!user) return;
+
+    setIsDeleting(true);
+
+    try {
+      await deleteUser(user);
+      toast({
+        title: 'Account Deleted',
+        description: 'Your account has been successfully deleted.',
+        status: 'success',
+        duration: 3000,
+        isClosable: true,
+      });
+      navigate('/signup');
+    } catch (error) {
+      console.error('Error deleting account:', error);
+
+      if (error.code === 'auth/requires-recent-login') {
+        setShowReauthPrompt(true);
+        toast({
+          title: 'Re-authentication Required',
+          description: 'Please log in again to delete your account.',
+          status: 'warning',
+          duration: 5000,
+          isClosable: true,
+        });
+      } else {
+        toast({
+          title: 'Account Deletion Failed',
+          description: error.message,
+          status: 'error',
+          duration: 3000,
+          isClosable: true,
+        });
+      }
+    } finally {
+      setIsDeleting(false);
+      onDeleteAlertClose();
+      onSettingsMenuClose();
+    }
+  };
+
+  const handleReauthenticateAndDelete = async () => {
+    if (!user || !reauthPassword) return;
+
+    setIsDeleting(true);
+    try {
+      const credential = EmailAuthProvider.credential(user.email, reauthPassword);
+      await reauthenticateWithCredential(user, credential);
+      await deleteUser(user);
+      toast({
+        title: 'Account Deleted',
+        description: 'Your account has been successfully deleted.',
+        status: 'success',
+        duration: 3000,
+        isClosable: true,
+      });
+      navigate('/signup');
+    } catch (error) {
+      console.error('Error reauthenticating or deleting:', error);
+      toast({
+        title: 'Deletion Failed',
+        description: error.message,
+        status: 'error',
+        duration: 5000,
+        isClosable: true,
+      });
+    } finally {
+      setIsDeleting(false);
+      setShowReauthPrompt(false);
+      setReauthPassword('');
+      onDeleteAlertClose();
+      onSettingsMenuClose();
+    }
+  };
+
   const PostsTabContent = () => <Text>User's posts will appear here.</Text>;
   const CommunityTabContent = () => <Text>User's community interactions will appear here.</Text>;
   const LiveSessionsTabContent = () => <Text>User's live sessions will appear here.</Text>;
@@ -196,9 +298,7 @@ const ProfilePage = () => {
     <Box minH="100vh" bg="gray.50" py={8} px={4}>
       <Container maxW="container.md">
         <VStack spacing={6} align="stretch">
-          {/* Top Header Row: Back and Share/Edit Buttons */}
           <Flex justify="space-between" align="center" w="100%" pb={4} borderBottom="1px" borderColor="gray.200">
-            {/* Left: Back Button */}
             <IconButton
               aria-label="Go back"
               icon={<ArrowBackIcon />}
@@ -206,45 +306,59 @@ const ProfilePage = () => {
               variant="ghost"
             />
 
-            {/* Only show Share and Edit buttons if not anonymous */}
-            {!isAnonymous && (
-              <HStack spacing={2}>
-                <IconButton
-                  aria-label="Share profile"
-                  icon={<FiShare />}
-                  onClick={handleShareProfile}
+            <HStack spacing={2}>
+              <Menu isOpen={isSettingsMenuOpen} onClose={onSettingsMenuClose}>
+                <MenuButton
+                  as={IconButton}
+                  aria-label="Settings"
+                  icon={<SettingsIcon />}
                   variant="ghost"
+                  onClick={onSettingsMenuOpen}
                 />
-                <Button colorScheme="orange" size="sm" onClick={onOpen}>
-                  Edit Profile
-                </Button>
-              </HStack>
-            )}
+                <MenuList>
+                  <MenuItem onClick={handleLogout}>
+                    Logout
+                  </MenuItem>
+                  <MenuItem onClick={onDeleteAlertOpen}>
+                    Delete Account
+                  </MenuItem>
+                </MenuList>
+              </Menu>
+
+              {!isAnonymous && user && (
+                <HStack spacing={2}>
+                  <IconButton
+                    aria-label="Share profile"
+                    icon={<FiShare />}
+                    onClick={handleShareProfile}
+                    variant="ghost"
+                  />
+                  <Button colorScheme="orange" size="sm" onClick={onOpen}>
+                    Edit Profile
+                  </Button>
+                </HStack>
+              )}
+            </HStack>
           </Flex>
 
-          {/* Profile Details Section (Centered) */}
-          <VStack spacing={4} align="center" w="100%"> {/* This VStack now contains the main profile content below the header */}
-            {/* Show default anonymous avatar or user's avatar */}
-            <Avatar 
-              size="xl" 
-              name={isAnonymous ? "Anonymous" : profile.name} 
-              src={isAnonymous ? "https://www.gravatar.com/avatar/00000000000000000000000000000000?d=mp&f=y" : "https://via.placeholder.com/150/CCCCCC/FFFFFF/?text=User"} 
+          <VStack spacing={4} align="center" w="100%">
+            <Avatar
+              size="xl"
+              name={isAnonymous ? "Anonymous User" : profile.name}
+              src={isAnonymous ? 'images/Anonymous.jpg' : profile.avatarUrl || 'https://via.placeholder.com/150'}
             />
-            
-            {/* Show anonymous name or user's name */}
+
             <Text fontSize="2xl" fontWeight="bold">
               {isAnonymous ? "Anonymous" : profile.name}
             </Text>
 
-            {/* Only show bio if not anonymous */}
-            {!isAnonymous && (
+            {!isAnonymous && profile.bio && (
               <Text fontSize="md" color="gray.600" textAlign="center">
                 {profile.bio}
               </Text>
             )}
 
-            {/* Only show follower/following counts if not anonymous */}
-            {!isAnonymous && (
+            {!isAnonymous && (user && (
               <HStack spacing={8}>
                 <VStack>
                   <Text fontSize="lg" fontWeight="bold">{profile.followers}</Text>
@@ -255,23 +369,23 @@ const ProfilePage = () => {
                   <Text fontSize="sm" color="gray.600">Following</Text>
                 </VStack>
               </HStack>
-            )}
+            ))}
 
-            {/* Anonymous Toggle */}
-            <FormControl display="flex" alignItems="center" justifyContent="center">
-              <FormLabel htmlFor="anonymous-toggle" mb="0">
-                Post Anonymously?
-              </FormLabel>
-              <Switch
-                id="anonymous-toggle"
-                isChecked={isAnonymous}
-                onChange={handleAnonymousToggle}
-                colorScheme="orange"
-              />
-            </FormControl>
+            {user && (
+              <FormControl display="flex" alignItems="center" justifyContent="center">
+                <FormLabel htmlFor="anonymous-toggle" mb="0">
+                  Post Anonymously?
+                </FormLabel>
+                <Switch
+                  id="anonymous-toggle"
+                  isChecked={isAnonymous}
+                  onChange={handleAnonymousToggle}
+                  colorScheme="orange"
+                />
+              </FormControl>
+            )}
           </VStack>
 
-          {/* Show tabs regardless of anonymous status */}
           <Tabs isFitted variant="enclosed">
             <TabList>
               <Tab>Posts</Tab>
@@ -294,13 +408,62 @@ const ProfilePage = () => {
         </VStack>
       </Container>
 
-      {/* Edit Profile Dialog */}
       <EditProfileDialog
         isOpen={isOpen}
         onClose={onClose}
         profile={profile}
         onSave={handleSaveProfile}
       />
+
+      <AlertDialog
+        isOpen={isDeleteAlertOpen}
+        leastDestructiveRef={cancelRef}
+        onClose={onDeleteAlertClose}
+      >
+        <AlertDialogOverlay>
+          <AlertDialogContent>
+            <AlertDialogHeader fontSize="lg" fontWeight="bold">
+              Delete Account
+            </AlertDialogHeader>
+
+            <AlertDialogBody>
+              {showReauthPrompt ? (
+                <VStack spacing={4}>
+                  <Alert status="warning">
+                    <AlertIcon />
+                    Please re-enter your password to confirm account deletion.
+                  </Alert>
+                  <FormControl>
+                    <FormLabel>Password</FormLabel>
+                    <Input
+                      type="password"
+                      value={reauthPassword}
+                      onChange={(e) => setReauthPassword(e.target.value)}
+                      placeholder="Enter your password"
+                    />
+                  </FormControl>
+                </VStack>
+              ) : (
+                <Text>Are you sure you want to delete your account? This action cannot be undone.</Text>
+              )}
+            </AlertDialogBody>
+
+            <AlertDialogFooter>
+              <Button ref={cancelRef} onClick={onDeleteAlertClose} isDisabled={isDeleting}>
+                Cancel
+              </Button>
+              <Button
+                colorScheme="red"
+                onClick={showReauthPrompt ? handleReauthenticateAndDelete : handleDeleteAccount}
+                ml={3}
+                isLoading={isDeleting}
+              >
+                {showReauthPrompt ? 'Confirm & Delete' : 'Delete Account'}
+              </Button>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialogOverlay>
+      </AlertDialog>
     </Box>
   );
 };

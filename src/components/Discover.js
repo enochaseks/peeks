@@ -36,6 +36,11 @@ const Discover = () => {
   const [isCreateCommunityModalOpen, setIsCreateCommunityModalOpen] = useState(false);
   // State to hold the current user's anonymous status
   const [isUserAnonymous, setIsUserAnonymous] = useState(false);
+  // State to hold the user's profile data for the header
+  const [discoverProfile, setDiscoverProfile] = useState({
+    username: 'User',
+    avatarUrl: '',
+  });
 
   // Effect to fetch user's anonymous status on component mount or user change
   useEffect(() => {
@@ -47,17 +52,33 @@ const Discover = () => {
           const userDocSnap = await getDoc(userDocRef);
           if (userDocSnap.exists()) {
             setIsUserAnonymous(userDocSnap.data().isAnonymous || false);
+            setDiscoverProfile({
+              username: userDocSnap.data().username || user.email || 'User',
+              avatarUrl: userDocSnap.data().avatarUrl || '',
+            });
           } else {
             // If user document doesn't exist, assume not anonymous for now
             setIsUserAnonymous(false);
+            setDiscoverProfile({
+              username: user?.email || 'User',
+              avatarUrl: '',
+            });
             console.warn('User document not found for anonymous status check in Discover.');
           }
         } catch (error) {
           console.error('Error fetching user anonymous status in Discover:', error);
           setIsUserAnonymous(false); // Default to not anonymous on error
+          setDiscoverProfile({
+            username: user?.email || 'User',
+            avatarUrl: '',
+          });
         }
       } else {
-        setIsUserAnonymous(false); // Not logged in, not anonymous
+        setIsUserAnonymous(false);
+        setDiscoverProfile({
+          username: 'User',
+          avatarUrl: '',
+        });
       }
     };
 
@@ -194,8 +215,8 @@ const Discover = () => {
             <Button variant="ghost" onClick={() => navigate('/profile')} p={0} minW="auto">
               <Avatar
                 size="sm"
-                name={isUserAnonymous ? "Anonymous" : auth.currentUser?.email}
-                src={isUserAnonymous ? "https://www.gravatar.com/avatar/00000000000000000000000000000000?d=mp&f=y" : ""}
+                name={isUserAnonymous ? "Anonymous User" : discoverProfile.username}
+                src={isUserAnonymous ? 'images/Anonymous.jpg' : discoverProfile.avatarUrl || 'https://via.placeholder.com/150'}
                 cursor="pointer"
               />
             </Button>
