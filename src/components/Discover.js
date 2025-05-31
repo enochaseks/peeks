@@ -13,6 +13,7 @@ import {
   Avatar,
   HStack,
   VStack,
+  useBreakpointValue,
 } from '@chakra-ui/react';
 import { useNavigate } from 'react-router-dom';
 import { signOut } from 'firebase/auth';
@@ -26,13 +27,6 @@ import { db } from '../firebase';
 const Discover = () => {
   const navigate = useNavigate();
   const toast = useToast();
-  const [searchQuery, setSearchQuery] = useState('');
-  // State to store search results
-  const [searchResults, setSearchResults] = useState({
-    users: [],
-    communities: [],
-  });
-  const [loadingSearch, setLoadingSearch] = useState(false);
   const [isCreateCommunityModalOpen, setIsCreateCommunityModalOpen] = useState(false);
   // State to hold the current user's anonymous status
   const [isUserAnonymous, setIsUserAnonymous] = useState(false);
@@ -135,53 +129,6 @@ const Discover = () => {
     handleCloseCreateCommunityModal();
   };
 
-  // Async function to fetch search results from Firestore
-  const fetchSearchResults = async (queryText) => {
-    if (queryText.trim() === '') {
-      setSearchResults({ users: [], communities: [] });
-      return;
-    }
-
-    setLoadingSearch(true);
-    try {
-      // Query users collection
-      const usersRef = collection(db, 'users');
-      const userQuery = query(usersRef, where('username', '>=', queryText), where('username', '<=', queryText + '\uf8ff'));
-      const userSnapshot = await getDocs(userQuery);
-      const fetchedUsers = userSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-
-      // Query communities collection
-      const communitiesRef = collection(db, 'communities');
-      const communityQuery = query(communitiesRef, where('name', '>=', queryText), where('name', '<=', queryText + '\uf8ff'));
-      const communitySnapshot = await getDocs(communityQuery);
-      const fetchedCommunities = communitySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-
-      setSearchResults({
-        users: fetchedUsers,
-        communities: fetchedCommunities,
-      });
-
-    } catch (error) {
-      console.error('Error fetching search results:', error);
-      toast({
-        title: 'Search Error',
-        description: 'Failed to fetch search results.',
-        status: 'error',
-        duration: 3000,
-        isClosable: true,
-      });
-      setSearchResults({ users: [], communities: [] });
-    } finally {
-      setLoadingSearch(false);
-    }
-  };
-
-  // Effect to trigger search when searchQuery changes
-  useEffect(() => {
-    // You might want to debounce this for performance on real Firestore calls
-    fetchSearchResults(searchQuery);
-  }, [searchQuery]);
-
   return (
     <Box
       minH="100vh"
@@ -199,69 +146,48 @@ const Discover = () => {
               <Text fontSize="xl" fontWeight="bold">Peeks</Text>
             </HStack>
 
-            {/* Center: Search Bar */}
-            <InputGroup flex="1" maxW="md" mx={4}>
+            {/* Center: Search Bar (visible on md and up) */}
+            <InputGroup flex="1" maxW="md" mx={4} display={{ base: 'none', md: 'flex' }}>
               <InputLeftElement pointerEvents="none">
                 <SearchIcon color="gray.400" />
               </InputLeftElement>
               <Input
                 placeholder="Search users and communities..."
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
               />
             </InputGroup>
 
-            {/* Right: Profile Icon */}
-            <Button variant="ghost" onClick={() => navigate('/profile')} p={0} minW="auto">
-              <Avatar
-                size="sm"
-                name={isUserAnonymous ? "Anonymous User" : discoverProfile.username}
-                src={isUserAnonymous ? 'images/Anonymous.jpg' : discoverProfile.avatarUrl || 'https://via.placeholder.com/150'}
-                cursor="pointer"
-              />
-            </Button>
+            {/* Right: Create Community and Profile Icons */}
+            <HStack spacing={2}>
+              {/* Search Icon (visible on base, moved to the right) */}
+              <Button
+                variant="ghost"
+                onClick={() => navigate('/search')}
+                p={0}
+                minW="auto"
+                aria-label="Search"
+                display={{ base: 'block', md: 'none' }}
+              >
+                <SearchIcon boxSize={6} />
+              </Button>
+              <Button
+                variant="ghost"
+                onClick={handleCreateCommunityClick}
+                p={0}
+                minW="auto"
+                aria-label="Create Community"
+              >
+                <AddIcon boxSize={5} />
+              </Button>
+              <Button variant="ghost" onClick={() => navigate('/profile')} p={0} minW="auto">
+                <Avatar
+                  size="sm"
+                  name={isUserAnonymous ? "Anonymous User" : discoverProfile.username}
+                  src={isUserAnonymous ? 'images/Anonymous.jpg' : discoverProfile.avatarUrl || 'https://via.placeholder.com/150'}
+                  cursor="pointer"
+                />
+              </Button>
+            </HStack>
           </Flex>
-
-          {/* Create Community Button - positioned below the header */}
-          <Flex justify="flex-end">
-            <Button
-              leftIcon={<AddIcon />}
-              colorScheme="orange"
-              onClick={handleCreateCommunityClick}
-            >
-              Create Community
-            </Button>
-          </Flex>
-
-          {/* Search Results Display Area */}
-          {searchQuery && (
-            <Box mt={4}>
-              <Text fontSize="lg" fontWeight="bold">Search Results:</Text>
-              {loadingSearch ? (
-                <Text>Loading...</Text>
-              ) : (
-                <VStack align="stretch" spacing={2} mt={2}>
-                  <Text fontSize="md" fontWeight="semibold">Users:</Text>
-                  {searchResults.users.length > 0 ? (
-                    searchResults.users.map(user => (
-                      <Text key={user.id}>{user.name}</Text>
-                    ))
-                  ) : (
-                    <Text fontSize="sm" color="gray.500">No users found.</Text>
-                  )}
-
-                  <Text fontSize="md" fontWeight="semibold">Communities:</Text>
-                  {searchResults.communities.length > 0 ? (
-                    searchResults.communities.map(community => (
-                      <Text key={community.id}>{community.name}</Text>
-                    ))
-                  ) : (
-                    <Text fontSize="sm" color="gray.500">No communities found.</Text>
-                  )}
-                </VStack>
-              )}
-            </Box>
-          )}
 
           {/* Content area below header, button, and search results (currently plain) */}
           {/* You would typically display recent communities or posts here when no search query is active */}

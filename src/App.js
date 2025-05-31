@@ -6,6 +6,7 @@ import Login from './components/Login';
 import MFAEnrollment from './components/MFAEnrollment';
 import Discover from './components/Discover';
 import ProfilePage from './components/ProfilePage';
+import SearchPage from './components/SearchPage';
 import { auth } from './firebase';
 
 // Protected Route component
@@ -46,6 +47,14 @@ function App() {
                 <ProfilePage />
               </ProtectedRoute>
             } 
+          />
+          <Route
+            path="/search"
+            element={
+              <ProtectedRoute>
+                <SearchPage />
+              </ProtectedRoute>
+            }
           />
           <Route path="/" element={<Navigate to="/discover" replace />} />
         </Routes>
