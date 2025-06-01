@@ -313,56 +313,56 @@ const Login = () => {
           <Text fontSize="xl" fontWeight="bold" color="white">Entering Peeks...</Text>
         </Center>
       ) : (
-        <Container maxW="md" py={10}>
-          <Flex justify="center" mb={5}>
-            <Box textAlign="center">
-              <Image src="/logo192.png" alt="Logo" boxSize="100px" />
-            </Box>
-            <Box textAlign="center" mt={4}>
-              <Text fontSize="4xl" fontWeight="bold" color="white" textAlign="center">
-                Welcome Peeks!
-              </Text>
-            </Box>
-          </Flex>
-          <VStack
-            spacing={4}
-            w="100%"
-            bg="orange.50"
-            rounded="xl"
-            boxShadow="2xl"
-            p={8}
-            bgColor="rgba(255, 255, 255, 0.9)"
-          >
-            {!showMfaPrompt ? (
-              <>
-                <FormControl id="email" isRequired>
-                  <FormLabel>Email</FormLabel>
-                  <Input
-                    type="email"
-                    name="email"
-                    value={formData.email}
-                    onChange={handleChange}
-                  />
-                </FormControl>
-                <FormControl id="password" isRequired>
-                  <FormLabel>Password</FormLabel>
-                  <Input
-                    type="password"
-                    name="password"
-                    value={formData.password}
-                    onChange={handleChange}
-                  />
-                </FormControl>
-                <Button
-                  type="submit"
-                  colorScheme="orange"
-                  width="full"
-                  onClick={handleSubmit}
-                  isLoading={loading}
-                  loadingText="Logging in..."
-                >
-                  Login
-                </Button>
+      <Container maxW="md" py={10}>
+        <Flex justify="center" mb={5}>
+          <Box textAlign="center">
+            <Image src="/logo192.png" alt="Logo" boxSize="100px" />
+          </Box>
+          <Box textAlign="center" mt={4}>
+            <Text fontSize="4xl" fontWeight="bold" color="white" textAlign="center">
+              Welcome Peeks!
+            </Text>
+          </Box>
+        </Flex>
+        <VStack
+          spacing={4}
+          w="100%"
+          bg="orange.50"
+          rounded="xl"
+          boxShadow="2xl"
+          p={8}
+          bgColor="rgba(255, 255, 255, 0.9)"
+        >
+          {!showMfaPrompt ? (
+            <>
+              <FormControl id="email" isRequired>
+                <FormLabel>Email</FormLabel>
+                <Input
+                  type="email"
+                  name="email"
+                  value={formData.email}
+                  onChange={handleChange}
+                />
+              </FormControl>
+              <FormControl id="password" isRequired>
+                <FormLabel>Password</FormLabel>
+                <Input
+                  type="password"
+                  name="password"
+                  value={formData.password}
+                  onChange={handleChange}
+                />
+              </FormControl>
+              <Button
+                type="submit"
+                colorScheme="orange"
+                width="full"
+                onClick={handleSubmit}
+                isLoading={loading}
+                loadingText="Logging in..."
+              >
+                Login
+              </Button>
 
                 <Divider my={4} />
                 <Text textAlign="center">OR</Text>
@@ -376,53 +376,53 @@ const Login = () => {
                 >
                   Sign in with Google
                 </Button>
-              </>
-            ) : (
-              <>
-                <Text>Please enter the verification code sent to your phone</Text>
-                <div id="recaptcha-container"></div>
-                <FormControl id="verificationCode" isRequired>
-                  <FormLabel>Verification Code</FormLabel>
-                  <Input
-                    type="text"
-                    value={verificationCode}
-                    onChange={(e) => setVerificationCode(e.target.value)}
-                    placeholder="Enter the 6-digit code"
-                  />
-                </FormControl>
+            </>
+          ) : (
+            <>
+              <Text>Please enter the verification code sent to your phone</Text>
+              <div id="recaptcha-container"></div>
+              <FormControl id="verificationCode" isRequired>
+                <FormLabel>Verification Code</FormLabel>
+                <Input
+                  type="text"
+                  value={verificationCode}
+                  onChange={(e) => setVerificationCode(e.target.value)}
+                  placeholder="Enter the 6-digit code"
+                />
+              </FormControl>
+              <Button
+                colorScheme="orange"
+                width="full"
+                onClick={handleMfaVerification}
+                isLoading={loading}
+                loadingText="Verifying..."
+              >
+                Verify
+              </Button>
+            </>
+          )}
+
+          {error && (
+            <Text color="red.500" fontSize="sm">
+              {error}
+              {error.includes('verify') && (
                 <Button
-                  colorScheme="orange"
-                  width="full"
-                  onClick={handleMfaVerification}
-                  isLoading={loading}
-                  loadingText="Verifying..."
+                  variant="link"
+                  color="blue.500"
+                  ml={2}
+                  onClick={handleResendVerification}
                 >
-                  Verify
+                  Resend verification email
                 </Button>
-              </>
-            )}
+              )}
+            </Text>
+          )}
 
-            {error && (
-              <Text color="red.500" fontSize="sm">
-                {error}
-                {error.includes('verify') && (
-                  <Button
-                    variant="link"
-                    color="blue.500"
-                    ml={2}
-                    onClick={handleResendVerification}
-                  >
-                    Resend verification email
-                  </Button>
-                )}
-              </Text>
-            )}
-
-            <Box textAlign="center">
-              <Link to="/signup">Don't have an account? Sign up</Link>
-            </Box>
-          </VStack>
-        </Container>
+          <Box textAlign="center">
+            <Link to="/signup">Don't have an account? Sign up</Link>
+          </Box>
+        </VStack>
+      </Container>
       )}
     </Box>
   );

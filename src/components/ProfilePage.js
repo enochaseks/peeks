@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import {
   Box,
   Container,
@@ -41,7 +41,7 @@ import EditProfileDialog from './EditProfileDialog';
 import { ArrowBackIcon, SettingsIcon } from '@chakra-ui/icons';
 import { FiShare } from 'react-icons/fi';
 import { useNavigate } from 'react-router-dom';
-import { doc, setDoc, getDoc } from 'firebase/firestore';
+import { doc, setDoc, getDoc, collection, query, where, getDocs } from 'firebase/firestore';
 import { db } from '../firebase';
 
 const ProfilePage = () => {
@@ -59,10 +59,12 @@ const ProfilePage = () => {
   const { isOpen, onOpen, onClose } = useDisclosure();
   const { isOpen: isSettingsMenuOpen, onOpen: onSettingsMenuOpen, onClose: onSettingsMenuClose } = useDisclosure();
   const { isOpen: isDeleteAlertOpen, onOpen: onDeleteAlertOpen, onClose: onDeleteAlertClose } = useDisclosure();
-  const cancelRef = React.useRef();
+  const cancelRef = useRef();
   const [isDeleting, setIsDeleting] = useState(false);
   const [reauthPassword, setReauthPassword] = useState('');
   const [showReauthPrompt, setShowReauthPrompt] = useState(false);
+  const [createdCommunities, setCreatedCommunities] = useState([]);
+  const [loadingCommunities, setLoadingCommunities] = useState(true);
 
   const navigate = useNavigate();
 
@@ -108,6 +110,39 @@ const ProfilePage = () => {
     };
 
     fetchProfileData();
+  }, [user, db, toast]);
+
+  useEffect(() => {
+    const fetchCreatedCommunities = async () => {
+      if (user) {
+        try {
+          setLoadingCommunities(true);
+          const communitiesQuery = query(
+            collection(db, 'communities'),
+            where('admins', 'array-contains', user.uid)
+          );
+          const communitySnapshot = await getDocs(communitiesQuery);
+          const communitiesList = communitySnapshot.docs.map(doc => ({
+            id: doc.id,
+            ...doc.data()
+          }));
+          setCreatedCommunities(communitiesList);
+        } catch (error) {
+          console.error('Error fetching created communities:', error);
+          toast({
+            title: 'Error',
+            description: 'Failed to load your communities.',
+            status: 'error',
+            duration: 3000,
+            isClosable: true,
+          });
+        } finally {
+          setLoadingCommunities(false);
+        }
+      }
+    };
+
+    fetchCreatedCommunities();
   }, [user, db, toast]);
 
   const handleAnonymousToggle = async () => {
@@ -263,36 +298,66 @@ const ProfilePage = () => {
     try {
       const credential = EmailAuthProvider.credential(user.email, reauthPassword);
       await reauthenticateWithCredential(user, credential);
-      await deleteUser(user);
-      toast({
-        title: 'Account Deleted',
-        description: 'Your account has been successfully deleted.',
-        status: 'success',
-        duration: 3000,
-        isClosable: true,
-      });
-      navigate('/signup');
+      await handleDeleteAccount();
     } catch (error) {
-      console.error('Error reauthenticating or deleting:', error);
+      console.error('Re-authentication failed:', error);
       toast({
-        title: 'Deletion Failed',
+        title: 'Re-authentication Failed',
         description: error.message,
         status: 'error',
-        duration: 5000,
+        duration: 3000,
         isClosable: true,
       });
     } finally {
       setIsDeleting(false);
-      setShowReauthPrompt(false);
       setReauthPassword('');
+      setShowReauthPrompt(false);
       onDeleteAlertClose();
       onSettingsMenuClose();
     }
   };
 
   const PostsTabContent = () => <Text>User's posts will appear here.</Text>;
-  const CommunityTabContent = () => <Text>User's community interactions will appear here.</Text>;
+
+  const CommunityTabContent = () => (
+    <VStack spacing={4} align="stretch">
+      <Text fontSize="lg" fontWeight="bold">Communities Created by You</Text>
+      {loadingCommunities ? (
+        <Spinner size="lg" />
+      ) : createdCommunities.length > 0 ? (
+        createdCommunities.map(community => (
+          <HStack
+            key={community.id}
+            p={4}
+            bg="white"
+            borderRadius="md"
+            boxShadow="sm"
+            cursor="pointer"
+            onClick={() => navigate(`/community/${community.id}`)}
+            align="center"
+          >
+            <Avatar size="md" name={community.name} src={community.avatarUrl} />
+            <Box>
+              <Text fontWeight="bold">{community.name}</Text>
+              <Text fontSize="sm" color="gray.600" noOfLines={1}>{community.description}</Text>
+            </Box>
+          </HStack>
+        ))
+      ) : (
+        <Text>You haven't created any communities yet.</Text>
+      )}
+    </VStack>
+  );
+
   const LiveSessionsTabContent = () => <Text>User's live sessions will appear here.</Text>;
+
+  if (!user) {
+    return (
+      <Container maxW="container.md" py={6}>
+        <Text>Please log in to view your profile.</Text>
+      </Container>
+    );
+  }
 
   return (
     <Box minH="100vh" bg="gray.50" py={8} px={4}>

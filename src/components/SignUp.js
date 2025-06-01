@@ -88,7 +88,7 @@ const SignUp = () => {
     try {
       const userCredential = await createUserWithEmailAndPassword(
         auth,
-        formData.email,
+        formData.email, 
         formData.password
       );
 
@@ -229,105 +229,105 @@ const SignUp = () => {
           <Text fontSize="xl" fontWeight="bold" color="white">Entering Peeks...</Text>
         </Center>
       ) : (
-        <Container maxW="lg">
-          <Box
-            bg="white"
-            rounded="xl"
-            boxShadow="2xl"
-            p={8}
-            bgColor="rgba(255, 255, 255, 0.9)"
-          >
-            <VStack spacing={6} align="stretch">
-              <Flex justify="center" align="center" gap={4}>
-                <Image
-                  src="/logo192.png"
-                  alt="Logo"
-                  boxSize="50px"
-                  objectFit="contain"
-                />
-                <Text
-                  fontSize="3xl"
-                  fontWeight="bold"
-                  color="#8B4513"
-                  textAlign="center"
-                >
-                  Sign Up
-                </Text>
-              </Flex>
-
-              <FormControl isRequired>
-                <FormLabel color="#8B4513">Username</FormLabel>
-                <Input
-                  type="text"
-                  name="username"
-                  value={formData.username}
-                  onChange={handleChange}
-                  placeholder="Enter your username"
-                  borderColor="#D2691E"
-                  _hover={{ borderColor: '#8B4513' }}
-                  _focus={{ borderColor: '#8B4513', boxShadow: '0 0 0 1px #8B4513' }}
-                />
-              </FormControl>
-
-              <FormControl isRequired>
-                <FormLabel color="#8B4513">Email</FormLabel>
-                <Input
-                  type="email"
-                  name="email"
-                  value={formData.email}
-                  onChange={handleChange}
-                  placeholder="Enter your email"
-                  borderColor="#D2691E"
-                  _hover={{ borderColor: '#8B4513' }}
-                  _focus={{ borderColor: '#8B4513', boxShadow: '0 0 0 1px #8B4513' }}
-                />
-              </FormControl>
-
-              <FormControl isRequired>
-                <FormLabel color="#8B4513">Password</FormLabel>
-                <Input
-                  type="password"
-                  name="password"
-                  value={formData.password}
-                  onChange={handleChange}
-                  placeholder="Enter your password"
-                  borderColor="#D2691E"
-                  _hover={{ borderColor: '#8B4513' }}
-                  _focus={{ borderColor: '#8B4513', boxShadow: '0 0 0 1px #8B4513' }}
-                />
-              </FormControl>
-
-              <FormControl isRequired>
-                <FormLabel color="#8B4513">Confirm Password</FormLabel>
-                <Input
-                  type="password"
-                  name="confirmPassword"
-                  value={formData.confirmPassword}
-                  onChange={handleChange}
-                  placeholder="Confirm your password"
-                  borderColor="#D2691E"
-                  _hover={{ borderColor: '#8B4513' }}
-                  _focus={{ borderColor: '#8B4513', boxShadow: '0 0 0 1px #8B4513' }}
-                />
-              </FormControl>
-
-              {error && (
-                <Text color="red.500" fontSize="sm" textAlign="center">
-                  {error}
-                </Text>
-              )}
-
-              <Button
-                colorScheme="orange"
-                width="full"
-                onClick={handleSubmit}
-                isLoading={loading}
-                loadingText="Signing up..."
-                bg="#D2691E"
-                _hover={{ bg: '#8B4513' }}
+      <Container maxW="lg">
+        <Box
+          bg="white"
+          rounded="xl"
+          boxShadow="2xl"
+          p={8}
+          bgColor="rgba(255, 255, 255, 0.9)"
+        >
+          <VStack spacing={6} align="stretch">
+            <Flex justify="center" align="center" gap={4}>
+              <Image
+                src="/logo192.png"
+                alt="Logo"
+                boxSize="50px"
+                objectFit="contain"
+              />
+              <Text
+                fontSize="3xl"
+                fontWeight="bold"
+                color="#8B4513"
+                textAlign="center"
               >
-                Sign Up 
-              </Button>
+                Sign Up
+              </Text>
+            </Flex>
+
+            <FormControl isRequired>
+              <FormLabel color="#8B4513">Username</FormLabel>
+              <Input
+                type="text"
+                name="username"
+                value={formData.username}
+                onChange={handleChange}
+                placeholder="Enter your username"
+                borderColor="#D2691E"
+                _hover={{ borderColor: '#8B4513' }}
+                _focus={{ borderColor: '#8B4513', boxShadow: '0 0 0 1px #8B4513' }}
+              />
+            </FormControl>
+
+            <FormControl isRequired>
+              <FormLabel color="#8B4513">Email</FormLabel>
+              <Input
+                type="email"
+                name="email"
+                value={formData.email}
+                onChange={handleChange}
+                placeholder="Enter your email"
+                borderColor="#D2691E"
+                _hover={{ borderColor: '#8B4513' }}
+                _focus={{ borderColor: '#8B4513', boxShadow: '0 0 0 1px #8B4513' }}
+              />
+            </FormControl>
+
+            <FormControl isRequired>
+              <FormLabel color="#8B4513">Password</FormLabel>
+              <Input
+                type="password"
+                name="password"
+                value={formData.password}
+                onChange={handleChange}
+                placeholder="Enter your password"
+                borderColor="#D2691E"
+                _hover={{ borderColor: '#8B4513' }}
+                _focus={{ borderColor: '#8B4513', boxShadow: '0 0 0 1px #8B4513' }}
+              />
+            </FormControl>
+
+            <FormControl isRequired>
+              <FormLabel color="#8B4513">Confirm Password</FormLabel>
+              <Input
+                type="password"
+                name="confirmPassword"
+                value={formData.confirmPassword}
+                onChange={handleChange}
+                placeholder="Confirm your password"
+                borderColor="#D2691E"
+                _hover={{ borderColor: '#8B4513' }}
+                _focus={{ borderColor: '#8B4513', boxShadow: '0 0 0 1px #8B4513' }}
+              />
+            </FormControl>
+
+            {error && (
+              <Text color="red.500" fontSize="sm" textAlign="center">
+                {error}
+              </Text>
+            )}
+
+            <Button
+              colorScheme="orange"
+              width="full"
+              onClick={handleSubmit}
+              isLoading={loading}
+              loadingText="Signing up..."
+              bg="#D2691E"
+              _hover={{ bg: '#8B4513' }}
+            >
+              Sign Up 
+            </Button>
 
               <Divider my={4} />
               <Text textAlign="center">OR</Text>
@@ -342,12 +342,12 @@ const SignUp = () => {
                 Sign up with Google
               </Button>
 
-              <Box textAlign="center">
-                <Link to="/login">Already have an account? Login</Link>
-              </Box>
-            </VStack>
-          </Box>
-        </Container>
+            <Box textAlign="center">
+              <Link to="/login">Already have an account? Login</Link>
+            </Box>
+          </VStack>
+        </Box>
+      </Container>
       )}
     </Box>
   );

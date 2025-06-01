@@ -24,6 +24,7 @@ import {
 import { auth } from '../firebase';
 import { collection, addDoc } from 'firebase/firestore';
 import { db } from '../firebase';
+import { useNavigate } from 'react-router-dom';
 
 // Renamed component and props
 const CreateCommunityDialog = ({ isOpen, onClose, onCreateCommunity, isUserAnonymous }) => {
@@ -35,6 +36,7 @@ const CreateCommunityDialog = ({ isOpen, onClose, onCreateCommunity, isUserAnony
   const [moderators, setModerators] = useState([]); // User is admin by default
 
   const toast = useToast();
+  const navigate = useNavigate();
 
   const handleSubmit = async () => {
     // Updated validation check
@@ -74,10 +76,11 @@ const CreateCommunityDialog = ({ isOpen, onClose, onCreateCommunity, isUserAnony
         moderators: [],
         createdAt: new Date(), // Timestamp
         isAnonymousCommunity: communityType === 'anonymous',
+        visitorCount: 0, // Initialize visitor count
       };
 
       // Add the new community document to the 'communities' collection
-      await addDoc(collection(db, "communities"), newCommunityData);
+      const docRef = await addDoc(collection(db, "communities"), newCommunityData);
 
       toast({
         title: 'Community created successfully!',
@@ -87,15 +90,17 @@ const CreateCommunityDialog = ({ isOpen, onClose, onCreateCommunity, isUserAnony
         isClosable: true,
       });
 
-      onCreateCommunity(newCommunityData); // Pass data to the parent component if needed
+      onCreateCommunity({ ...newCommunityData, id: docRef.id }); // Pass data to the parent component if needed
 
       // Clear form and close modal
       setName('');
       setDescription('');
       setRules('');
-      setCommunityType(isUserAnonymous ? 'anonymous' : 'public');
       setModerators([]);
       onClose();
+
+      // Navigate to the new community page
+      navigate(`/community/${docRef.id}`);
 
     } catch (error) {
       console.error('Error creating community:', error);
