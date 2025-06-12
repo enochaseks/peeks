@@ -4,12 +4,10 @@ import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-d
 import SignUp from './components/SignUp';
 import Login from './components/Login';
 import MFAEnrollment from './components/MFAEnrollment';
-import Discover from './components/Discover';
-import ProfilePage from './components/ProfilePage';
-import SearchPage from './components/SearchPage';
+import CameraViewer from './components/CameraViewer';
+import Profile from './components/Profile';
+import Settings from './components/Settings';
 import { auth } from './firebase';
-import CreatePostDialog from './components/CreatePostDialog';
-import CommunityPage from './components/CommunityPage';
 
 // Protected Route component
 const ProtectedRoute = ({ children }) => {
@@ -54,51 +52,33 @@ function App() {
               </ProtectedRoute>
             } 
           />
+          
+          {/* Camera View Route */}
           <Route 
-            path="/discover" 
+            path="/camera" 
             element={
               <ProtectedRoute>
-                <Discover />
+                <CameraViewer />
               </ProtectedRoute>
             } 
-          />
-          <Route 
-            path="/profile" 
-            element={
-              <ProtectedRoute>
-                <ProfilePage />
-              </ProtectedRoute>
-            } 
-          />
-          <Route
-            path="/search"
-            element={
-              <ProtectedRoute>
-                <SearchPage />
-              </ProtectedRoute>
-            }
-          />
-          <Route
-            path="/community/:communityId"
-            element={
-              <ProtectedRoute>
-                <CommunityPage />
-              </ProtectedRoute>
-            }
           />
           
-          {/* Redirect authenticated users from login/signup to discover */}
+          {/* Redirect authenticated users from login/signup to camera */}
           <Route 
             path="/signup"
-            element={auth.currentUser ? <Navigate to="/discover" replace /> : <SignUp />}
+            element={auth.currentUser ? <Navigate to="/camera" replace /> : <SignUp />}
           />
-           <Route 
+          <Route 
             path="/login"
-            element={auth.currentUser ? <Navigate to="/discover" replace /> : <Login />}
+            element={auth.currentUser ? <Navigate to="/camera" replace /> : <Login />}
           />
 
+          {/* Add the profile route */}
+          <Route path="/profile" element={<Profile />} />
+          <Route path="/settings" element={<Settings />} />
+
           {/* Default route */}
-          <Route path="/" element={<Navigate to="/discover" replace />} />
+          <Route path="/" element={<Navigate to="/camera" replace />} />
 
           {/* Catch-all for undefined routes (optional) */}
           {/* <Route path="*" element={<div>404 Not Found</div>} /> */}

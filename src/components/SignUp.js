@@ -20,7 +20,7 @@ import {
   Spinner,
 } from '@chakra-ui/react';
 import { Link } from 'react-router-dom';
-import { collection, doc, setDoc, getDoc } from 'firebase/firestore';
+import { collection, doc, setDoc, getDoc, query, where, getDocs } from 'firebase/firestore';
 import { db } from '../firebase';
 
 // Define keyframes for static-like flicker
@@ -53,12 +53,31 @@ const SignUp = () => {
     email: '',
     password: '',
     confirmPassword: '',
+    dob: '',
   });
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
   const [isTransitioning, setIsTransitioning] = useState(false);
   const toast = useToast();
   const navigate = useNavigate();
+  const [usernameSuggestions, setUsernameSuggestions] = useState([]);
+  const [checkingUsername, setCheckingUsername] = useState(false);
+
+  // Helper to check if username exists
+  const checkUsernameExists = async (username) => {
+    const q = query(collection(db, 'users'), where('username', '==', username));
+    const snapshot = await getDocs(q);
+    return !snapshot.empty;
+  };
+
+  // Suggest alternative usernames
+  const suggestUsernames = (base) => {
+    const suggestions = [];
+    for (let i = 1; i <= 3; i++) {
+      suggestions.push(base + Math.floor(Math.random() * 1000));
+    }
+    return suggestions;
+  };
 
   const handleChange = (e) => {
     const { name, value } = e.target;
@@ -66,12 +85,47 @@ const SignUp = () => {
       ...prevState,
       [name]: value
     }));
+    if (name === 'username' && value.length > 2) {
+      setCheckingUsername(true);
+      checkUsernameExists(value).then(exists => {
+        if (exists) {
+          setError('Username already taken');
+          setUsernameSuggestions(suggestUsernames(value));
+        } else {
+          setError('');
+          setUsernameSuggestions([]);
+        }
+        setCheckingUsername(false);
+      });
+    }
   };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
     setError('');
     setLoading(true);
+
+    // Age validation
+    if (!formData.dob) {
+      setError('Date of birth is required');
+      setLoading(false);
+      return;
+    }
+    const dobDate = new Date(formData.dob);
+    const age = ((new Date()).getTime() - dobDate.getTime()) / (1000 * 60 * 60 * 24 * 365.25);
+    if (age < 16) {
+      setError('You must be at least 16 years old to sign up');
+      setLoading(false);
+      return;
+    }
+
+    // Username duplicate check
+    if (await checkUsernameExists(formData.username)) {
+      setError('Username already taken');
+      setUsernameSuggestions(suggestUsernames(formData.username));
+      setLoading(false);
+      return;
+    }
 
     if (formData.password !== formData.confirmPassword) {
       setError('Passwords do not match');
@@ -101,10 +155,12 @@ const SignUp = () => {
       await setDoc(doc(db, "users", user.uid), {
         username: formData.username,
         email: user.email,
+        dob: formData.dob,
         createdAt: new Date(),
         followers: 0,
         following: 0,
         bio: '',
+        profilePicture: 'https://ui-avatars.com/api/?name=' + encodeURIComponent(formData.username) + '&background=random',
       });
 
       await sendEmailVerification(user);
@@ -120,7 +176,11 @@ const SignUp = () => {
       navigate('/login');
 
     } catch (error) {
-      setError(error.message);
+      if (error.code === 'auth/email-already-in-use') {
+        setError('Email is already in use. Please use a different email.');
+      } else {
+        setError(error.message);
+      }
       toast({
         title: 'Error',
         description: error.message,
@@ -152,6 +212,7 @@ const SignUp = () => {
           followers: 0,
           following: 0,
           bio: '',
+          profilePicture: 'https://ui-avatars.com/api/?name=' + encodeURIComponent(user.displayName || user.email) + '&background=random',
         });
       }
 
@@ -266,7 +327,17 @@ const SignUp = () => {
                 borderColor="#D2691E"
                 _hover={{ borderColor: '#8B4513' }}
                 _focus={{ borderColor: '#8B4513', boxShadow: '0 0 0 1px #8B4513' }}
+                isInvalid={!!error && error.includes('Username')}
               />
+              {checkingUsername && <Text color="orange.500" fontSize="sm">Checking username...</Text>}
+              {error && error.includes('Username') && (
+                <Box mt={1}>
+                  <Text color="red.500" fontSize="sm">{error}</Text>
+                  {usernameSuggestions.length > 0 && (
+                    <Text color="gray.500" fontSize="sm">Suggestions: {usernameSuggestions.join(', ')}</Text>
+                  )}
+                </Box>
+              )}
             </FormControl>
 
             <FormControl isRequired>
@@ -308,6 +379,20 @@ const SignUp = () => {
                 borderColor="#D2691E"
                 _hover={{ borderColor: '#8B4513' }}
                 _focus={{ borderColor: '#8B4513', boxShadow: '0 0 0 1px #8B4513' }}
+              />
+            </FormControl>
+
+            <FormControl isRequired>
+              <FormLabel color="#8B4513">Date of Birth</FormLabel>
+              <Input
+                type="date"
+                name="dob"
+                value={formData.dob}
+                onChange={handleChange}
+                borderColor="#D2691E"
+                _hover={{ borderColor: '#8B4513' }}
+                _focus={{ borderColor: '#8B4513', boxShadow: '0 0 0 1px #8B4513' }}
+                max={new Date().toISOString().split('T')[0]}
               />
             </FormControl>
 

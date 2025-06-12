@@ -135,7 +135,7 @@ const Login = () => {
         
         setIsTransitioning(true);
         setTimeout(() => {
-          navigate('/discover');
+          navigate('/camera');
         }, 1500);
       }
     } catch (error) {
@@ -222,7 +222,7 @@ const Login = () => {
       
       setIsTransitioning(true);
       setTimeout(() => {
-        navigate('/discover');
+        navigate('/camera');
       }, 1500);
     } catch (error) {
       console.error('MFA Verification Error:', error);
@@ -253,7 +253,7 @@ const Login = () => {
       });
       setIsTransitioning(true);
       setTimeout(() => {
-        navigate('/discover');
+        navigate('/camera');
       }, 1500);
     } catch (error) {
       console.error('Google Sign-in Error:', error);
