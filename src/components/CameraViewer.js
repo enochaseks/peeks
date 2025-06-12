@@ -67,7 +67,8 @@ const CameraViewer = () => {
           facingMode: isFrontCamera ? 'user' : 'environment',
           width: { ideal: 1920 },
           height: { ideal: 1080 }
-        }
+        },
+        audio: true // Enable audio capture
       };
 
       const stream = await navigator.mediaDevices.getUserMedia(constraints);
@@ -101,7 +102,7 @@ const CameraViewer = () => {
     if (!videoRef.current) return;
     try {
       const video = videoRef.current;
-      if (video.videoWidth === 0 || video.videoHeight === 0) {
+      if (video.readyState < 2) {
         toast({
           title: 'Camera not ready',
           description: 'Please wait for the camera to load before taking a photo.',
@@ -111,12 +112,21 @@ const CameraViewer = () => {
         });
         return;
       }
+
       const canvas = document.createElement('canvas');
       canvas.width = video.videoWidth;
       canvas.height = video.videoHeight;
       const ctx = canvas.getContext('2d');
-      ctx.drawImage(video, 0, 0);
-      const blob = await new Promise(resolve => canvas.toBlob(resolve, 'image/jpeg'));
+      
+      // Apply mirror effect for front camera
+      if (isFrontCamera) {
+        ctx.translate(canvas.width, 0);
+        ctx.scale(-1, 1);
+      }
+      
+      ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+      
+      const blob = await new Promise(resolve => canvas.toBlob(resolve, 'image/jpeg', 0.95));
       if (!blob) {
         toast({
           title: 'Error',
@@ -167,12 +177,17 @@ const CameraViewer = () => {
     }
     try {
       recordedChunksRef.current = [];
-      const recorder = new window.MediaRecorder(streamRef.current, { mimeType: 'video/webm' });
+      const recorder = new window.MediaRecorder(streamRef.current, { 
+        mimeType: 'video/webm',
+        videoBitsPerSecond: 2500000 // 2.5 Mbps for better quality
+      });
+      
       recorder.ondataavailable = (event) => {
         if (event.data.size > 0) {
           recordedChunksRef.current.push(event.data);
         }
       };
+      
       recorder.onstop = () => {
         if (recordedChunksRef.current.length === 0) {
           toast({
@@ -184,15 +199,20 @@ const CameraViewer = () => {
           });
           return;
         }
-        const blob = new Blob(recordedChunksRef.current, { type: 'video/webm' });
-        recordedChunksRef.current = [];
+        
+        const blob = new Blob(recordedChunksRef.current, { 
+          type: 'video/webm;codecs=vp8,opus' 
+        });
         const url = URL.createObjectURL(blob);
         setPreview({ type: 'video', url });
+        recordedChunksRef.current = []; // Clear after creating blob
         onOpen();
       };
-      recorder.start();
+      
+      recorder.start(1000); // Collect data every second
       setMediaRecorder(recorder);
       setIsRecording(true);
+      
       // Set timeout to stop after 1 minute
       recordingTimeoutRef.current = setTimeout(() => {
         stopRecording();
@@ -213,7 +233,8 @@ const CameraViewer = () => {
       clearTimeout(recordingTimeoutRef.current);
       recordingTimeoutRef.current = null;
     }
-    if (mediaRecorder) {
+    
+    if (mediaRecorder && mediaRecorder.state !== 'inactive') {
       mediaRecorder.stop();
       setIsRecording(false);
       setMediaRecorder(null);
@@ -266,8 +287,11 @@ const CameraViewer = () => {
 
   // Helper to close preview and restart camera
   const closePreviewAndResumeCamera = () => {
-    if (preview) URL.revokeObjectURL(preview.url);
-    setPreview(null);
+    if (preview) {
+      URL.revokeObjectURL(preview.url);
+      setPreview(null);
+    }
+    onClose();
     startCamera();
   };
 
@@ -344,6 +368,8 @@ const CameraViewer = () => {
               src={preview.url}
               autoPlay
               loop
+              playsInline
+              controls
               style={{
                 position: 'absolute',
                 top: 0,
@@ -352,6 +378,7 @@ const CameraViewer = () => {
                 height: '100vh',
                 objectFit: 'cover',
                 zIndex: 1,
+                transform: isFrontCamera ? 'none' : 'scaleX(-1)',
               }}
             />
           )}
@@ -415,10 +442,12 @@ const CameraViewer = () => {
             ref={videoRef}
             autoPlay
             playsInline
+            muted
             style={{
               width: '100%',
               height: '100%',
               objectFit: 'cover',
+              transform: isFrontCamera ? 'scaleX(-1)' : 'none',
             }}
           />
 
