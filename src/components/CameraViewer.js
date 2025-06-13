@@ -24,11 +24,12 @@ import { FaCamera, FaVideo, FaExchangeAlt, FaSave, FaRegPaperPlane, FaRegBookmar
 import { useNavigate } from 'react-router-dom';
 import { doc, getDoc } from 'firebase/firestore';
 import { auth, db } from '../firebase';
+import Livestreaming from './Livestreaming';
 
 const CameraViewer = () => {
   const [isFrontCamera, setIsFrontCamera] = useState(true);
   const [isRecording, setIsRecording] = useState(false);
-  const [isLive, setIsLive] = useState(false);
+  const [isLiveMode, setIsLiveMode] = useState(false);
   const [mediaRecorder, setMediaRecorder] = useState(null);
   const recordingTimeoutRef = useRef(null);
   const videoRef = useRef(null);
@@ -40,14 +41,42 @@ const CameraViewer = () => {
   const [preview, setPreview] = useState(null);
   const [isFlashOn, setIsFlashOn] = useState(false);
   const [profilePic, setProfilePic] = useState(null);
+  const [previewRotation, setPreviewRotation] = useState(0);
+  const [liveCameraRotation, setLiveCameraRotation] = useState(0);
+  const longPressTimerRef = useRef(null);
+  const LONG_PRESS_THRESHOLD = 300;
+  const [touchStart, setTouchStart] = useState(null);
+  const [touchEnd, setTouchEnd] = useState(null);
+  const minSwipeDistance = 50;
 
-  // Initialize camera
   useEffect(() => {
-    startCamera();
+    startCamera(); // Always start camera when component mounts or isFrontCamera changes
     return () => {
-      stopCamera();
+      stopCamera(); // Stop camera only when component unmounts
     };
-  }, [isFrontCamera]);
+  }, [isFrontCamera]); // Only depend on isFrontCamera for camera toggling
+
+  useEffect(() => {
+    const getRotationAngle = () => {
+      const angle = window.screen.orientation?.angle || window.orientation || 0;
+      if (angle === 90) return 90;
+      if (angle === 270) return -90;
+      return 0;
+    };
+
+    const handleOrientationChange = () => {
+      setLiveCameraRotation(getRotationAngle());
+    };
+
+    handleOrientationChange();
+    window.addEventListener('orientationchange', handleOrientationChange);
+    window.addEventListener('resize', handleOrientationChange);
+
+    return () => {
+      window.removeEventListener('orientationchange', handleOrientationChange);
+      window.removeEventListener('resize', handleOrientationChange);
+    };
+  }, []);
 
   useEffect(() => {
     const fetchProfilePic = async () => {
@@ -62,19 +91,21 @@ const CameraViewer = () => {
 
   const startCamera = async () => {
     try {
+      console.log('Attempting to start camera...');
       const constraints = {
         video: {
           facingMode: isFrontCamera ? 'user' : 'environment',
           width: { ideal: 1920 },
           height: { ideal: 1080 }
         },
-        audio: true // Enable audio capture
+        audio: true
       };
 
       const stream = await navigator.mediaDevices.getUserMedia(constraints);
       if (videoRef.current) {
         videoRef.current.srcObject = stream;
         streamRef.current = stream;
+        console.log('Camera stream set.');
       }
     } catch (error) {
       console.error('Error accessing camera:', error);
@@ -91,15 +122,22 @@ const CameraViewer = () => {
   const stopCamera = () => {
     if (streamRef.current) {
       streamRef.current.getTracks().forEach(track => track.stop());
+      console.log('Camera stream stopped.');
     }
   };
 
   const toggleCamera = () => {
     setIsFrontCamera(!isFrontCamera);
+    console.log('Toggling camera to:', !isFrontCamera ? 'front' : 'back');
   };
 
   const handleCapture = async () => {
-    if (!videoRef.current) return;
+    console.log('handleCapture called (intending to take photo)');
+    if (!videoRef.current) {
+      console.log('videoRef not current.');
+      return;
+    }
+
     try {
       const video = videoRef.current;
       if (video.readyState < 2) {
@@ -110,40 +148,79 @@ const CameraViewer = () => {
           duration: 3000,
           isClosable: true,
         });
+        console.log('Camera video not ready (readyState: ', video.readyState, ').');
         return;
       }
 
       const canvas = document.createElement('canvas');
-      canvas.width = video.videoWidth;
-      canvas.height = video.videoHeight;
+      let width = video.videoWidth;
+      let height = video.videoHeight;
+      const orientation = window.screen.orientation?.angle || window.orientation || 0;
+      setPreviewRotation(orientation);
+
+      if (orientation === 90 || orientation === 270) {
+        [width, height] = [height, width];
+      }
+
+      canvas.width = width;
+      canvas.height = height;
       const ctx = canvas.getContext('2d');
-      
-      // Apply mirror effect for front camera
+      console.log(`Canvas created: ${width}x${height}, orientation: ${orientation}deg.`);
+
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+      ctx.save();
+      ctx.translate(canvas.width / 2, canvas.height / 2);
+      ctx.rotate((orientation * Math.PI) / 180);
+
       if (isFrontCamera) {
-        ctx.translate(canvas.width, 0);
         ctx.scale(-1, 1);
       }
-      
-      ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
-      
-      const blob = await new Promise(resolve => canvas.toBlob(resolve, 'image/jpeg', 0.95));
-      if (!blob) {
+
+      if (orientation === 90 || orientation === 270) {
+        ctx.drawImage(video, -height / 2, -width / 2, height, width);
+      } else {
+        ctx.drawImage(video, -width / 2, -height / 2, width, height);
+      }
+      ctx.restore();
+      console.log('Video frame drawn to canvas.');
+
+      const blob = await new Promise((resolve) => {
+        canvas.toBlob(
+          (capturedBlob) => {
+            if (!capturedBlob) {
+              console.error('canvas.toBlob returned null blob.');
         toast({
           title: 'Error',
-          description: 'Failed to capture photo.',
+                description: 'Failed to create image blob.',
           status: 'error',
           duration: 3000,
           isClosable: true,
         });
+              resolve(null);
+            } else {
+              console.log('Photo blob created: type=', capturedBlob.type, 'size=', capturedBlob.size);
+              resolve(capturedBlob);
+            }
+          },
+          'image/jpeg',
+          0.95
+        );
+      });
+
+      if (!blob) {
+        console.log('Blob was null, stopping capture process.');
         return;
       }
+
       const url = URL.createObjectURL(blob);
-      setPreview({ type: 'photo', url });
+      setPreview({ type: 'photo', url, blob });
+      console.log('Preview set to photo type with URL:', url);
       onOpen();
     } catch (error) {
+      console.error('Photo capture error:', error);
       toast({
         title: 'Error',
-        description: 'Failed to capture photo.',
+        description: `Failed to capture photo: ${error.message}`,
         status: 'error',
         duration: 3000,
         isClosable: true,
@@ -152,19 +229,48 @@ const CameraViewer = () => {
   };
 
   const handleLiveStream = () => {
-    setIsLive(!isLive);
-    // Implement live streaming functionality
+    if (streamRef.current) {
+      const activeStream = streamRef.current;
+      setIsLiveMode(true);
+      toast({
+        title: 'Live Stream Started',
+        description: 'You are now live!',
+        status: 'success',
+        duration: 3000,
+        isClosable: true,
+      });
+      console.log('Switched to live mode with active stream.');
+    } else {
+      toast({
+        title: 'Camera not ready',
+        description: 'Cannot go live without an active camera stream.',
+        status: 'error',
+        duration: 3000,
+        isClosable: true,
+      });
+      console.log('Cannot go live: no active stream.');
+    }
+  };
+
+  const handleEndLiveStream = () => {
+    console.log('handleEndLiveStream called. Ending live mode.');
+    if (streamRef.current) {
+      streamRef.current.getTracks().forEach(track => track.stop());
+      streamRef.current = null;
+    }
+    setIsLiveMode(false);
+    startCamera();
     toast({
-      title: isLive ? 'Live Stream Ended' : 'Live Stream Started',
-      description: isLive ? 'Your live stream has ended.' : 'You are now live!',
-      status: isLive ? 'info' : 'success',
+      title: 'Live Stream Ended',
+      description: 'Your live stream has ended.',
+      status: 'info',
       duration: 3000,
       isClosable: true,
     });
   };
 
-  // Video recording handlers with 1 minute limit
-  const startRecording = () => {
+  const _startRecording = () => {
+    console.log('_startRecording called (actual video recording)');
     if (!streamRef.current) {
       toast({
         title: 'Camera not ready',
@@ -173,22 +279,25 @@ const CameraViewer = () => {
         duration: 3000,
         isClosable: true,
       });
+      console.log('Stream not ready for recording.');
       return;
     }
     try {
       recordedChunksRef.current = [];
       const recorder = new window.MediaRecorder(streamRef.current, { 
-        mimeType: 'video/webm',
-        videoBitsPerSecond: 2500000 // 2.5 Mbps for better quality
+        mimeType: 'video/webm;codecs=vp8,opus',
+        videoBitsPerSecond: 2500000
       });
       
       recorder.ondataavailable = (event) => {
         if (event.data.size > 0) {
           recordedChunksRef.current.push(event.data);
+          console.log('Recorded chunk data available, size:', event.data.size, 'mimeType:', event.data.type);
         }
       };
       
       recorder.onstop = () => {
+        console.log('MediaRecorder stopped.');
         if (recordedChunksRef.current.length === 0) {
           toast({
             title: 'Recording Error',
@@ -197,6 +306,7 @@ const CameraViewer = () => {
             duration: 3000,
             isClosable: true,
           });
+          console.log('No video data was recorded.');
           return;
         }
         
@@ -204,20 +314,23 @@ const CameraViewer = () => {
           type: 'video/webm;codecs=vp8,opus' 
         });
         const url = URL.createObjectURL(blob);
-        setPreview({ type: 'video', url });
-        recordedChunksRef.current = []; // Clear after creating blob
+        setPreview({ type: 'video', url, blob });
+        console.log('Preview set to video type, blob type:', blob.type, 'blob size:', blob.size);
+        recordedChunksRef.current = [];
         onOpen();
       };
       
-      recorder.start(1000); // Collect data every second
+      recorder.start(1000);
       setMediaRecorder(recorder);
       setIsRecording(true);
+      console.log('Recording started.');
       
-      // Set timeout to stop after 1 minute
       recordingTimeoutRef.current = setTimeout(() => {
-        stopRecording();
+        _stopRecording();
+        console.log('Recording stopped by timeout.');
       }, 60000);
     } catch (error) {
+      console.error('Recording Error:', error);
       toast({
         title: 'Recording Error',
         description: 'Could not start video recording.',
@@ -228,25 +341,80 @@ const CameraViewer = () => {
     }
   };
 
-  const stopRecording = () => {
+  const _stopRecording = () => {
+    console.log('_stopRecording called (actual video recording stop).');
     if (recordingTimeoutRef.current) {
       clearTimeout(recordingTimeoutRef.current);
       recordingTimeoutRef.current = null;
     }
-    
+
     if (mediaRecorder && mediaRecorder.state !== 'inactive') {
       mediaRecorder.stop();
       setIsRecording(false);
       setMediaRecorder(null);
+      console.log('MediaRecorder stopped programmatically.');
+    } else {
+      console.log('MediaRecorder was not active or already stopped.');
     }
   };
 
-  const handleSavePreview = () => {
-    if (!preview) return;
+  const handlePressStart = () => {
+    console.log('handlePressStart called.');
+    if (longPressTimerRef.current) {
+      clearTimeout(longPressTimerRef.current);
+    }
+    longPressTimerRef.current = setTimeout(() => {
+      console.log('Long press detected. Starting recording.');
+      _startRecording();
+      longPressTimerRef.current = null;
+    }, LONG_PRESS_THRESHOLD);
+  };
+
+  const handlePressEnd = () => {
+    console.log('handlePressEnd called.');
+    if (longPressTimerRef.current) {
+      console.log('Short tap detected. Taking photo.');
+      clearTimeout(longPressTimerRef.current);
+      longPressTimerRef.current = null;
+      if (!isRecording) {
+      handleCapture();
+      } else {
+        console.log('Was recording, so not taking photo on tap end.');
+      }
+    } else if (isRecording) {
+      console.log('Long press release detected. Stopping recording.');
+      _stopRecording();
+    }
+  };
+
+  const handlePressLeave = () => {
+    if (longPressTimerRef.current) {
+      clearTimeout(longPressTimerRef.current);
+      longPressTimerRef.current = null;
+      console.log('Press leave detected before long press. No action.');
+    } else if (isRecording) {
+      console.log('Press leave detected during recording. Stopping recording.');
+      _stopRecording();
+    }
+  };
+
+  const handleSavePreview = async () => {
+    console.log('handleSavePreview called.');
+    if (!preview || !preview.blob) {
+      console.log('No preview or blob to save.');
+      return;
+    }
+    try {
     const a = document.createElement('a');
-    a.href = preview.url;
-    a.download = preview.type === 'photo' ? `photo_${new Date().getTime()}.jpg` : `video_${new Date().getTime()}.webm`;
+      a.href = URL.createObjectURL(preview.blob);
+      
+      if (preview.type === 'photo') {
+        a.download = `photo_${new Date().getTime()}.jpg`;
+      } else {
+        a.download = `video_${new Date().getTime()}.webm`;
+      }
     a.click();
+      URL.revokeObjectURL(a.href);
     URL.revokeObjectURL(preview.url);
     setPreview(null);
     onClose();
@@ -257,9 +425,21 @@ const CameraViewer = () => {
       duration: 3000,
       isClosable: true,
     });
+      console.log(`${preview.type} saved successfully.`);
+    } catch (error) {
+      console.error('Save error:', error);
+      toast({
+        title: 'Error',
+        description: 'Failed to save media.',
+        status: 'error',
+        duration: 3000,
+        isClosable: true,
+      });
+    }
   };
 
   const handlePostStory = () => {
+    console.log('handlePostStory called.');
     if (preview) URL.revokeObjectURL(preview.url);
     setPreview(null);
     onClose();
@@ -273,6 +453,7 @@ const CameraViewer = () => {
   };
 
   const handleSendTo = () => {
+    console.log('handleSendTo called.');
     if (preview) URL.revokeObjectURL(preview.url);
     setPreview(null);
     onClose();
@@ -285,25 +466,56 @@ const CameraViewer = () => {
     });
   };
 
-  // Helper to close preview and restart camera
   const closePreviewAndResumeCamera = () => {
+    console.log('closePreviewAndResumeCamera called.');
     if (preview) {
       URL.revokeObjectURL(preview.url);
       setPreview(null);
     }
+    setPreviewRotation(0);
     onClose();
     startCamera();
   };
 
-  // Toggle flash (UI only)
-  const toggleFlash = () => setIsFlashOn((prev) => !prev);
+  const toggleFlash = () => {
+    setIsFlashOn((prev) => !prev);
+    console.log('Flash toggled to:', !isFlashOn);
+  };
+
+  const onTouchStart = (e) => {
+    setTouchEnd(null);
+    setTouchStart(e.targetTouches[0].clientX);
+  };
+
+  const onTouchMove = (e) => {
+    setTouchEnd(e.targetTouches[0].clientX);
+  };
+
+  const onTouchEnd = () => {
+    if (!touchStart || !touchEnd) return;
+    
+    const distance = touchStart - touchEnd; // Negative means right swipe
+    const isRightSwipe = distance < -minSwipeDistance;
+    
+    if (isRightSwipe) {
+      navigate('/inbox');
+    }
+  };
 
   return (
-    <Box position="relative" w="100vw" h="100vh" bg="black">
-      {/* Top Bar: Profile (left) and Flash (right) */}
+    <Box
+      h="100vh"
+      position="relative"
+      onTouchStart={onTouchStart}
+      onTouchMove={onTouchMove}
+      onTouchEnd={onTouchEnd}
+    >
+      {isLiveMode ? (
+        <Livestreaming stream={streamRef.current} onEndLive={handleEndLiveStream} />
+      ) : (
+        <>
       {!preview && (
         <Flex position="absolute" top={4} left={0} right={0} zIndex={3} justify="space-between" align="center" px={6}>
-          {/* Profile Icon */}
           <IconButton
             aria-label="Profile"
             icon={
@@ -316,7 +528,6 @@ const CameraViewer = () => {
             borderRadius="full"
             onClick={() => navigate('/profile')}
           />
-          {/* Flash Icon */}
           <IconButton
             aria-label="Toggle flash"
             icon={<FaBolt size={28} color={isFlashOn ? '#FFD600' : '#FFF'} />}
@@ -330,60 +541,57 @@ const CameraViewer = () => {
         </Flex>
       )}
 
-      {/* Main Content: Show preview or camera */}
       {preview ? (
         <>
-          {/* X Button (top right) */}
           <IconButton
             aria-label="Close preview"
             icon={<FaTimes />}
             position="absolute"
             top={4}
             right={4}
-            zIndex={3}
+                zIndex={3}
             size="lg"
             colorScheme="whiteAlpha"
             bg="rgba(0,0,0,0.5)"
             borderRadius="full"
             onClick={closePreviewAndResumeCamera}
           />
-
-          {/* Fullscreen Preview */}
-          {preview.type === 'photo' ? (
-            <img
-              src={preview.url}
-              alt="Preview"
-              style={{
-                position: 'absolute',
-                top: 0,
-                left: 0,
-                width: '100vw',
-                height: '100vh',
-                objectFit: 'cover',
-                zIndex: 1,
-              }}
-            />
-          ) : (
-            <video
-              src={preview.url}
-              autoPlay
-              loop
-              playsInline
-              controls
-              style={{
-                position: 'absolute',
-                top: 0,
-                left: 0,
-                width: '100vw',
-                height: '100vh',
-                objectFit: 'cover',
-                zIndex: 1,
-                transform: isFrontCamera ? 'none' : 'scaleX(-1)',
-              }}
-            />
-          )}
-
-          {/* Preview Action Bar (bottom) */}
+          <Box
+            position="absolute"
+            top="50%"
+            left="50%"
+                width={previewRotation % 180 !== 0 ? '100vh' : '100vw'}
+                height={previewRotation % 180 !== 0 ? '100vw' : '100vh'}
+                zIndex={1}
+                transform={`translate(-50%, -50%) rotate(${previewRotation}deg)`}
+            transformOrigin="center center"
+                overflow="hidden"
+          >
+            {preview.type === 'photo' ? (
+              <img
+                src={preview.url}
+                alt="Preview"
+                style={{
+                  width: '100%',
+                  height: '100%',
+                  objectFit: 'cover',
+                }}
+              />
+            ) : (
+              <video
+                src={preview.url}
+                autoPlay
+                loop
+                playsInline
+                controls
+                style={{
+                  width: '100%',
+                  height: '100%',
+                  objectFit: 'cover',
+                }}
+              />
+            )}
+          </Box>
           <Flex
             position="absolute"
             bottom="0"
@@ -393,14 +601,28 @@ const CameraViewer = () => {
             justify="center"
             align="center"
             bg="rgba(0, 0, 0, 0.2)"
-            zIndex={2}
+                zIndex={2}
           >
-            <HStack spacing={16} w="100%" justify="center" align="center">
-              {/* Save */}
+            <HStack spacing={12} w="100%" justify="center" align="center">
+              {preview.type === 'video' && (
+                <Center flexDirection="column">
+                  <IconButton
+                    aria-label="Rotate"
+                    icon={<FaExchangeAlt size={28} color="#FF6600" />}
+                    colorScheme="white"
+                    variant="ghost"
+                    size="lg"
+                    fontSize="2xl"
+                    borderRadius="full"
+                        onClick={() => setPreviewRotation((r) => (r + 90) % 360)}
+                  />
+                  <Text fontSize="sm" color="white" mt={1}>Rotate</Text>
+                </Center>
+              )}
               <Center flexDirection="column">
                 <IconButton
                   aria-label="Save"
-                  icon={<FaDownload size={28} color="#FF6600" />}
+                      icon={<FaDownload size={28} color="#FF6600" />}
                   colorScheme="white"
                   variant="ghost"
                   size="lg"
@@ -410,7 +632,6 @@ const CameraViewer = () => {
                 />
                 <Text fontSize="sm" color="white" mt={1}>Save</Text>
               </Center>
-              {/* Post on Stories */}
               <Button
                 colorScheme="blue"
                 size="lg"
@@ -421,7 +642,6 @@ const CameraViewer = () => {
               >
                 Stories
               </Button>
-              {/* Send To */}
               <Button
                 colorScheme="orange"
                 size="lg"
@@ -437,7 +657,6 @@ const CameraViewer = () => {
         </>
       ) : (
         <>
-          {/* Camera View */}
           <video
             ref={videoRef}
             autoPlay
@@ -447,11 +666,14 @@ const CameraViewer = () => {
               width: '100%',
               height: '100%',
               objectFit: 'cover',
-              transform: isFrontCamera ? 'scaleX(-1)' : 'none',
+              transform: `
+                ${isFrontCamera ? 'scaleX(-1)' : ''}
+                rotate(${liveCameraRotation}deg)
+              `.trim(),
+              transformOrigin: 'center center',
             }}
           />
 
-          {/* Camera Controls */}
           <Flex
             position="absolute"
             bottom="0"
@@ -462,30 +684,27 @@ const CameraViewer = () => {
             align="center"
           >
             <HStack spacing={8} w="100%" justify="center" align="center">
-              {/* Go Live Button */}
               <Button
                 aria-label="Go live"
                 onClick={handleLiveStream}
-                colorScheme={isLive ? "red" : "gray"}
-                variant={isLive ? "solid" : "outline"}
+                    colorScheme="red"
+                    variant="solid"
                 borderRadius="full"
                 size="lg"
                 fontWeight="bold"
                 px={6}
                 leftIcon={<FaVideo />}
               >
-                {isLive ? 'Live' : 'Go Live'}
+                    Go Live
               </Button>
 
-              {/* Combined Capture/Record Button (no icon) */}
               <Button
                 aria-label={isRecording ? "Recording video" : "Take photo or record video"}
-                onClick={handleCapture}
-                onMouseDown={startRecording}
-                onMouseUp={stopRecording}
-                onMouseLeave={isRecording ? stopRecording : undefined}
-                onTouchStart={startRecording}
-                onTouchEnd={stopRecording}
+                    onMouseDown={handlePressStart}
+                    onMouseUp={handlePressEnd}
+                    onMouseLeave={handlePressLeave}
+                    onTouchStart={handlePressStart}
+                    onTouchEnd={handlePressEnd}
                 bg="white"
                 borderRadius="full"
                 w="72px"
@@ -503,9 +722,8 @@ const CameraViewer = () => {
                 justifyContent="center"
               />
 
-              {/* Camera Switch */}
               <IconButton
-                aria-label="Switch camera"
+                    aria-label="Toggle camera"
                 icon={<FaExchangeAlt />}
                 colorScheme="white"
                 variant="ghost"
@@ -516,21 +734,7 @@ const CameraViewer = () => {
               />
             </HStack>
           </Flex>
-
-          {/* Live Indicator */}
-          {isLive && (
-            <Box
-              position="absolute"
-              top={4}
-              left={4}
-              bg="red.500"
-              color="white"
-              px={3}
-              py={1}
-              borderRadius="full"
-            >
-              <Text fontSize="sm" fontWeight="bold">LIVE</Text>
-            </Box>
+            </>
           )}
         </>
       )}

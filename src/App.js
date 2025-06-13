@@ -7,6 +7,7 @@ import MFAEnrollment from './components/MFAEnrollment';
 import CameraViewer from './components/CameraViewer';
 import Profile from './components/Profile';
 import Settings from './components/Settings';
+import Inbox from './pages/Inbox';
 import { auth } from './firebase';
 
 // Protected Route component
@@ -59,6 +60,16 @@ function App() {
             element={
               <ProtectedRoute>
                 <CameraViewer />
+              </ProtectedRoute>
+            } 
+          />
+
+          {/* Inbox Route */}
+          <Route 
+            path="/inbox" 
+            element={
+              <ProtectedRoute>
+                <Inbox />
               </ProtectedRoute>
             } 
           />
