@@ -8,6 +8,7 @@ import CameraViewer from './components/CameraViewer';
 import Profile from './components/Profile';
 import Settings from './components/Settings';
 import Inbox from './pages/Inbox';
+import Feed from './pages/Feed';
 import { auth } from './firebase';
 
 // Protected Route component
@@ -60,6 +61,16 @@ function App() {
             element={
               <ProtectedRoute>
                 <CameraViewer />
+              </ProtectedRoute>
+            } 
+          />
+
+          {/* Feed Route */}
+          <Route 
+            path="/feed" 
+            element={
+              <ProtectedRoute>
+                <Feed />
               </ProtectedRoute>
             } 
           />

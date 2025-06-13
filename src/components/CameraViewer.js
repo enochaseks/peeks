@@ -22,8 +22,9 @@ import {
 } from '@chakra-ui/react';
 import { FaCamera, FaVideo, FaExchangeAlt, FaSave, FaRegPaperPlane, FaRegBookmark, FaTimes, FaDownload, FaUserCircle, FaBolt } from 'react-icons/fa';
 import { useNavigate } from 'react-router-dom';
-import { doc, getDoc } from 'firebase/firestore';
-import { auth, db } from '../firebase';
+import { doc, getDoc, collection, addDoc, serverTimestamp } from 'firebase/firestore';
+import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
+import { auth, db, storage } from '../firebase';
 import Livestreaming from './Livestreaming';
 
 const CameraViewer = () => {
@@ -438,18 +439,59 @@ const CameraViewer = () => {
     }
   };
 
-  const handlePostStory = () => {
+  const handlePostStory = async () => {
     console.log('handlePostStory called.');
-    if (preview) URL.revokeObjectURL(preview.url);
-    setPreview(null);
-    onClose();
-    toast({
-      title: 'Posted to Stories!',
-      description: 'Your media has been posted to your story.',
-      status: 'success',
-      duration: 3000,
-      isClosable: true,
-    });
+    if (!preview || !auth.currentUser) {
+      toast({
+        title: 'Error',
+        description: 'No media to post or user not logged in.',
+        status: 'error',
+        duration: 3000,
+        isClosable: true,
+      });
+      return;
+    }
+
+    try {
+      const blob = await fetch(preview.url).then((res) => res.blob());
+      const storageRef = ref(storage, `stories/${auth.currentUser.uid}/${Date.now()}`);
+      await uploadBytes(storageRef, blob);
+      const mediaUrl = await getDownloadURL(storageRef);
+
+      const userDoc = await getDoc(doc(db, 'users', auth.currentUser.uid));
+      const userData = userDoc.exists() ? userDoc.data() : {};
+
+      await addDoc(collection(db, 'stories'), {
+        userId: auth.currentUser.uid,
+        username: userData.username || 'Anonymous',
+        userProfilePic: userData.profilePicture || null,
+        mediaUrl: mediaUrl,
+        timestamp: serverTimestamp(),
+        type: preview.type, // 'photo' or 'video'
+      });
+
+      toast({
+        title: 'Posted to Stories!',
+        description: 'Your media has been posted to your story.',
+        status: 'success',
+        duration: 3000,
+        isClosable: true,
+      });
+
+      if (preview) URL.revokeObjectURL(preview.url);
+      setPreview(null);
+      onClose();
+      navigate('/feed'); // Navigate to feed after posting
+    } catch (error) {
+      console.error('Error posting story:', error);
+      toast({
+        title: 'Error',
+        description: 'Failed to post story.',
+        status: 'error',
+        duration: 3000,
+        isClosable: true,
+      });
+    }
   };
 
   const handleSendTo = () => {
@@ -483,7 +525,6 @@ const CameraViewer = () => {
   };
 
   const onTouchStart = (e) => {
-    setTouchEnd(null);
     setTouchStart(e.targetTouches[0].clientX);
   };
 
@@ -494,16 +535,23 @@ const CameraViewer = () => {
   const onTouchEnd = () => {
     if (!touchStart || !touchEnd) return;
     
-    const distance = touchStart - touchEnd; // Negative means right swipe
+    const distance = touchStart - touchEnd;
+    const isLeftSwipe = distance > minSwipeDistance;
     const isRightSwipe = distance < -minSwipeDistance;
     
-    if (isRightSwipe) {
+    if (isLeftSwipe) {
+      navigate('/feed');
+    } else if (isRightSwipe) {
       navigate('/inbox');
     }
+    
+    setTouchStart(null);
+    setTouchEnd(null);
   };
 
   return (
     <Box
+      w="100%"
       h="100vh"
       position="relative"
       onTouchStart={onTouchStart}
