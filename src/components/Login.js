@@ -29,30 +29,10 @@ import {
   signInWithPopup,
 } from 'firebase/auth';
 import { auth } from '../firebase';
+import { FaGoogle } from 'react-icons/fa';
 
 // Define keyframes for static-like flicker
-const staticFlickerKeyframes = `@keyframes static-flicker {
-  0%, 100% { opacity: 1; }
-  5% { opacity: 0.9; }
-  10% { opacity: 1; }
-  15% { opacity: 0.9; }
-  20% { opacity: 1; }
-  25% { opacity: 0.9; }
-  30% { opacity: 1; }
-  35% { opacity: 0.9; }
-  40% { opacity: 1; }
-  45% { opacity: 0.9; }
-  50% { opacity: 1; }
-  55% { opacity: 0.9; }
-  60% { opacity: 1; }
-  65% { opacity: 0.9; }
-  70% { opacity: 1; }
-  75% { opacity: 0.9; }
-  80% { opacity: 1; }
-  85% { opacity: 0.9; }
-  90% { opacity: 1; }
-  95% { opacity: 0.9; }
-}`;
+const staticFlickerKeyframes = `@keyframes static-flicker {\n  0%, 100% { opacity: 1; }\n  5% { opacity: 0.9; }\n  10% { opacity: 1; }\n  15% { opacity: 0.9; }\n  20% { opacity: 1; }\n  25% { opacity: 0.9; }\n  30% { opacity: 1; }\n  35% { opacity: 0.9; }\n  40% { opacity: 1; }\n  45% { opacity: 0.9; }\n  50% { opacity: 1; }\n  55% { opacity: 0.9; }\n  60% { opacity: 1; }\n  65% { opacity: 0.9; }\n  70% { opacity: 1; }\n  75% { opacity: 0.9; }\n  80% { opacity: 1; }\n  85% { opacity: 0.9; }\n  90% { opacity: 1; }\n  95% { opacity: 0.9; }\n}`;
 
 const Login = () => {
   const [formData, setFormData] = useState({
@@ -272,158 +252,179 @@ const Login = () => {
 
   return (
     <Box
+      bg="purple.800"
       minH="100vh"
-      bg="linear-gradient(135deg, #8B4513 0%, #D2691E 100%)"
-      py={12}
-      px={4}
-      css={{
-        position: 'relative',
-        overflow: 'hidden',
-        '&::before': {
-          content: '""',
-          position: 'absolute',
-          top: 0,
-          left: 0,
-          width: '100%',
-          height: '100%',
-          background: 'repeating-linear-gradient(0deg, rgba(0,0,0,0.2) 0px, rgba(0,0,0,0.2) 1px, transparent 1px, transparent 2px)',
-          animation: 'static-flicker 0.1s infinite step-end',
-          pointerEvents: 'none',
-        },
-        '&::after': {
-          content: '""',
-          position: 'absolute',
-          top: 0,
-          left: 0,
-          width: '100%',
-          height: '100%',
-          background: 'repeating-linear-gradient(90deg, rgba(255,255,255,0.1) 0px, rgba(255,255,255,0.1) 1px, transparent 1px, transparent 2px)',
-          animation: 'static-flicker 0.15s infinite step-end reverse',
-          pointerEvents: 'none',
-        },
-      }}
+      display="flex"
+      alignItems="center"
+      justifyContent="center"
+      position="relative"
+      overflow="hidden"
+      color="white"
     >
-      <style>
-        {staticFlickerKeyframes}
-      </style>
-      {isTransitioning ? (
-        <Center minH="100vh" flexDirection="column">
-          <Image src="/logo192.png" alt="Peeks Logo" boxSize="150px" mb={4} />
-          <Spinner size="xl" color="orange.500" mb={4} />
+      {/* Background static/flicker effect */}
+      <Box
+        position="absolute"
+        top="0"
+        left="0"
+        width="100%"
+        height="100%"
+        bg="repeating-linear-gradient(45deg, purple.700 0, purple.700 1px, transparent 0, transparent 50%)"
+        backgroundSize="3px 3px"
+        opacity="0.1"
+        animation="static-flicker 10s infinite step-end"
+        zIndex="0"
+      >
+        <style>{staticFlickerKeyframes}</style>
+      </Box>
+
+      {/* Transitioning / Loading State Overlay */}
+      {isTransitioning && (
+        <Center
+          position="absolute"
+          top="0"
+          left="0"
+          width="100%"
+          height="100%"
+          bg="rgba(0,0,0,0.7)" // Semi-transparent overlay
+          zIndex="10"
+          flexDirection="column"
+        >
+          <Image src="/logo192.png" alt="Peeks Logo" boxSize="150px" mb={4} objectFit="contain" />
+          <Spinner size="xl" color="purple.400" mb={4} />
           <Text fontSize="xl" fontWeight="bold" color="white">Entering Peeks...</Text>
         </Center>
-      ) : (
-      <Container maxW="md" py={10}>
-        <Flex justify="center" mb={5}>
-          <Box textAlign="center">
-            <Image src="/logo192.png" alt="Logo" boxSize="100px" />
-          </Box>
-          <Box textAlign="center" mt={4}>
-            <Text fontSize="4xl" fontWeight="bold" color="white" textAlign="center">
-              Welcome Peeks!
-            </Text>
-          </Box>
-        </Flex>
-        <VStack
-          spacing={4}
-          w="100%"
-          bg="orange.50"
-          rounded="xl"
-          boxShadow="2xl"
-          p={8}
-          bgColor="rgba(255, 255, 255, 0.9)"
-        >
-          {!showMfaPrompt ? (
-            <>
-              <FormControl id="email" isRequired>
-                <FormLabel>Email</FormLabel>
-                <Input
-                  type="email"
-                  name="email"
-                  value={formData.email}
-                  onChange={handleChange}
-                />
-              </FormControl>
-              <FormControl id="password" isRequired>
-                <FormLabel>Password</FormLabel>
-                <Input
-                  type="password"
-                  name="password"
-                  value={formData.password}
-                  onChange={handleChange}
-                />
-              </FormControl>
-              <Button
-                type="submit"
-                colorScheme="orange"
-                width="full"
-                onClick={handleSubmit}
-                isLoading={loading}
-                loadingText="Logging in..."
-              >
-                Login
-              </Button>
+      )}
 
-                <Divider my={4} />
-                <Text textAlign="center">OR</Text>
-
-                <Button
-                  leftIcon={<Icon viewBox="0 0 24 24" boxSize="24px"><path fill="currentColor" d="M21.2 11.1c-.1-.6-.2-1.1-.4-1.6h-6.8v3.2h3.9c-.2 1.3-.8 2.3-1.7 3l2.6 2c1.5-1.4 2.4-3.3 2.6-5.6zm-7.4 3.8c.9 0 1.7-.3 2.3-.8l2.6 2c-1 1-2.3 1.7-3.8 1.7-2.7 0-5-1.8-5.8-4.2H3v2.1c1.6 3.2 4.8 5.5 8.5 5.5 2.3 0 4.3-.8 5.8-2.1l-2.6-2c-.6.5-1.4.8-2.3.8zm-3.2-8.5V5c0-1.4 1.1-2.5 2.5-2.5S15 3.6 15 5v.4H9.8v2.1h4.4zm-6.5 3.6H3V9.4h5.1c-.2 1.2-.2 2.5 0 3.6z"/></Icon>}
-                  colorScheme="gray"
-                  width="full"
-                  onClick={handleGoogleSignIn}
-                  isLoading={loading}
-                >
-                  Sign in with Google
-                </Button>
-            </>
-          ) : (
-            <>
-              <Text>Please enter the verification code sent to your phone</Text>
-              <div id="recaptcha-container"></div>
-              <FormControl id="verificationCode" isRequired>
-                <FormLabel>Verification Code</FormLabel>
-                <Input
-                  type="text"
-                  value={verificationCode}
-                  onChange={(e) => setVerificationCode(e.target.value)}
-                  placeholder="Enter the 6-digit code"
-                />
-              </FormControl>
-              <Button
-                colorScheme="orange"
-                width="full"
-                onClick={handleMfaVerification}
-                isLoading={loading}
-                loadingText="Verifying..."
-              >
-                Verify
-              </Button>
-            </>
+      {/* Main content box with form */}
+      <Container
+        centerContent
+        maxW="md"
+        py={8}
+        px={6}
+        bg="purple.900"
+        borderRadius="xl"
+        boxShadow="dark-lg"
+        zIndex="1"
+        position="relative"
+      >
+        <VStack spacing={6} align="stretch" w="100%">
+          {/* Logo in main form area (if not transitioning) */}
+          {!isTransitioning && (
+            <Center>
+              <Image src="/logo192.png" alt="Peeks Logo" boxSize="100px" objectFit="contain" />
+            </Center>
           )}
+          <Text fontSize="3xl" fontWeight="bold" textAlign="center" color="white">
+            Login
+          </Text>
 
           {error && (
-            <Text color="red.500" fontSize="sm">
+            <Text color="red.300" textAlign="center" fontSize="sm">
               {error}
-              {error.includes('verify') && (
-                <Button
-                  variant="link"
-                  color="blue.500"
-                  ml={2}
-                  onClick={handleResendVerification}
-                >
-                  Resend verification email
-                </Button>
-              )}
             </Text>
           )}
 
-          <Box textAlign="center">
-            <Link to="/signup">Don't have an account? Sign up</Link>
-          </Box>
+          <FormControl id="email">
+            <FormLabel color="whiteAlpha.800">Email address</FormLabel>
+            <Input
+              name="email"
+              type="email"
+              value={formData.email}
+              onChange={handleChange}
+              placeholder="Enter your email"
+              bg="purple.700"
+              borderColor="purple.600"
+              color="white"
+              _placeholder={{ color: 'whiteAlpha.600' }}
+              _hover={{ borderColor: 'purple.400' }}
+              _focus={{ borderColor: 'purple.300', boxShadow: '0 0 0 1px #805AD5' }}
+            />
+          </FormControl>
+
+          <FormControl id="password">
+            <FormLabel color="whiteAlpha.800">Password</FormLabel>
+            <Input
+              name="password"
+              type="password"
+              value={formData.password}
+              onChange={handleChange}
+              placeholder="Enter your password"
+              bg="purple.700"
+              borderColor="purple.600"
+              color="white"
+              _placeholder={{ color: 'whiteAlpha.600' }}
+              _hover={{ borderColor: 'purple.400' }}
+              _focus={{ borderColor: 'purple.300', boxShadow: '0 0 0 1px #805AD5' }}
+            />
+          </FormControl>
+
+          <Button
+            type="submit"
+            colorScheme="purple"
+            isLoading={loading}
+            onClick={handleSubmit}
+            size="lg"
+            fontSize="md"
+            w="100%"
+            mt={4}
+          >
+            Login
+          </Button>
+
+          <Flex align="center" my={4}>
+            <Divider borderColor="whiteAlpha.400" />
+            <Text px={2} fontSize="sm" color="whiteAlpha.700">
+              OR
+            </Text>
+            <Divider borderColor="whiteAlpha.400" />
+          </Flex>
+
+          <Button
+            leftIcon={<Icon as={FaGoogle} />}
+            colorScheme="red"
+            onClick={handleGoogleSignIn}
+            isLoading={loading}
+            size="lg"
+            fontSize="md"
+            w="100%"
+          >
+            Sign in with Google
+          </Button>
+
+          {showMfaPrompt && (
+            <Box mt={4} p={4} borderWidth={1} borderRadius="lg" borderColor="purple.600">
+              <Text mb={2} textAlign="center" color="whiteAlpha.800">Enter MFA Code:</Text>
+              <Input
+                type="text"
+                placeholder="Verification Code"
+                value={verificationCode}
+                onChange={(e) => setVerificationCode(e.target.value)}
+                bg="purple.700"
+                borderColor="purple.600"
+                color="white"
+                _placeholder={{ color: 'whiteAlpha.600' }}
+              />
+              <Button
+                mt={2}
+                colorScheme="purple"
+                onClick={handleMfaVerification}
+                isLoading={loading}
+                w="100%"
+              >
+                Verify Code
+              </Button>
+              <Box id="recaptcha-container" mt={2}></Box>
+            </Box>
+          )}
+
+          <Text textAlign="center" fontSize="sm" color="whiteAlpha.800">
+            Don't have an account?{' '}
+            <Link to="/signup" style={{ color: '#E9D8FD', fontWeight: 'bold' }}>
+              Sign Up
+            </Link>
+          </Text>
         </VStack>
       </Container>
-      )}
     </Box>
   );
 };

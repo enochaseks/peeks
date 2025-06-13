@@ -181,8 +181,9 @@ const Profile = () => {
 
   if (loading) {
     return (
-      <Center w="100vw" h="100vh" bg="black">
-        <Spinner color="orange.400" size="xl" />
+      <Center w="100vw" h="100vh" bg="black" flexDirection="column">
+        <Image src="/logo192.png" alt="Peeks Logo" boxSize="150px" mb={4} objectFit="contain" />
+        <Spinner color="purple.400" size="xl" />
       </Center>
     );
   }
@@ -226,7 +227,7 @@ const Profile = () => {
             bottom={0}
             right={0}
             borderRadius="full"
-            colorScheme="orange"
+            colorScheme="purple"
             onClick={handlePhotoIconClick}
             zIndex={2}
           />
@@ -243,7 +244,7 @@ const Profile = () => {
         </Text>
         <Button
           leftIcon={<FaEdit />}
-          colorScheme="orange"
+          colorScheme="purple"
           size="sm"
           mt={1}
           onClick={openEdit}
@@ -251,7 +252,7 @@ const Profile = () => {
           Edit Profile
         </Button>
       </VStack>
-      <Tabs variant="soft-rounded" colorScheme="orange" w="100%" mt={2}>
+      <Tabs variant="soft-rounded" colorScheme="purple" w="100%" mt={2}>
         <TabList justifyContent="center">
           <Tab w="50%">Posts</Tab>
           <Tab w="50%">Saved Stories</Tab>
@@ -283,7 +284,7 @@ const Profile = () => {
                   bottom={0}
                   right={0}
                   borderRadius="full"
-                  colorScheme="orange"
+                  colorScheme="purple"
                   onClick={handlePhotoIconClick}
                   zIndex={2}
                 />
@@ -302,12 +303,18 @@ const Profile = () => {
                   onChange={handleEditUsernameChange}
                   maxLength={30}
                   isInvalid={!!editError}
+                  bg="gray.700"
+                  borderColor="gray.600"
+                  color="white"
+                  _placeholder={{ color: 'gray.400' }}
+                  _hover={{ borderColor: 'gray.500' }}
+                  _focus={{ borderColor: 'blue.400', boxShadow: '0 0 0 1px #63B3ED' }}
                 />
                 <InputRightElement>
                   <FaEdit color="gray.400" />
                 </InputRightElement>
               </InputGroup>
-              {checkingUsername && <Text color="orange.500" fontSize="sm">Checking username...</Text>}
+              {checkingUsername && <Text color="gray.500" fontSize="sm">Checking username...</Text>}
               {editError && (
                 <Box mt={1}>
                   <Text color="red.500" fontSize="sm">{editError}</Text>
@@ -319,10 +326,10 @@ const Profile = () => {
             </VStack>
           </ModalBody>
           <ModalFooter>
-            <Button colorScheme="orange" mr={3} onClick={handleSave} isLoading={saving}>
+            <Button colorScheme="purple" mr={3} onClick={handleSave} isLoading={saving}>
               Save
             </Button>
-            <Button variant="ghost" onClick={() => setIsEditOpen(false)}>
+            <Button variant="ghost" onClick={() => setIsEditOpen(false)} color="whiteAlpha.800">
               Cancel
             </Button>
           </ModalFooter>

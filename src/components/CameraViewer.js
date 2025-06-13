@@ -622,7 +622,7 @@ const CameraViewer = () => {
               <Center flexDirection="column">
                 <IconButton
                   aria-label="Save"
-                      icon={<FaDownload size={28} color="#FF6600" />}
+                      icon={<FaDownload size={28} color="purple.400" />}
                   colorScheme="white"
                   variant="ghost"
                   size="lg"
@@ -633,7 +633,7 @@ const CameraViewer = () => {
                 <Text fontSize="sm" color="white" mt={1}>Save</Text>
               </Center>
               <Button
-                colorScheme="blue"
+                colorScheme="purple"
                 size="lg"
                 fontWeight="bold"
                 borderRadius="full"
@@ -643,7 +643,7 @@ const CameraViewer = () => {
                 Stories
               </Button>
               <Button
-                colorScheme="orange"
+                colorScheme="purple"
                 size="lg"
                 fontWeight="bold"
                 borderRadius="full"

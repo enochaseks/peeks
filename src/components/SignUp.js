@@ -22,6 +22,7 @@ import {
 import { Link } from 'react-router-dom';
 import { collection, doc, setDoc, getDoc, query, where, getDocs } from 'firebase/firestore';
 import { db } from '../firebase';
+import { FaGoogle } from 'react-icons/fa';
 
 // Define keyframes for static-like flicker
 const staticFlickerKeyframes = `@keyframes static-flicker {
@@ -249,191 +250,213 @@ const SignUp = () => {
 
   return (
     <Box
+      bg="purple.800"
       minH="100vh"
-      bg="linear-gradient(135deg, #8B4513 0%, #D2691E 100%)"
-      py={12}
-      px={4}
-      css={{
-        position: 'relative',
-        overflow: 'hidden',
-        '&::before': {
-          content: '""',
-          position: 'absolute',
-          top: 0,
-          left: 0,
-          width: '100%',
-          height: '100%',
-          background: 'repeating-linear-gradient(0deg, rgba(0,0,0,0.2) 0px, rgba(0,0,0,0.2) 1px, transparent 1px, transparent 2px)',
-          animation: 'static-flicker 0.1s infinite step-end',
-          pointerEvents: 'none',
-        },
-        '&::after': {
-          content: '""',
-          position: 'absolute',
-          top: 0,
-          left: 0,
-          width: '100%',
-          height: '100%',
-          background: 'repeating-linear-gradient(90deg, rgba(255,255,255,0.1) 0px, rgba(255,255,255,0.1) 1px, transparent 1px, transparent 2px)',
-          animation: 'static-flicker 0.15s infinite step-end reverse',
-          pointerEvents: 'none',
-        },
-      }}
+      display="flex"
+      alignItems="center"
+      justifyContent="center"
+      position="relative"
+      overflow="hidden"
+      color="white"
     >
-      <style>
-        {staticFlickerKeyframes}
-      </style>
-      {isTransitioning ? (
-        <Center minH="100vh" flexDirection="column">
-          <Image src="/logo192.png" alt="Peeks Logo" boxSize="150px" mb={4} />
-          <Spinner size="xl" color="orange.500" mb={4} />
+      {/* Background static/flicker effect */}
+      <Box
+        position="absolute"
+        top="0"
+        left="0"
+        width="100%"
+        height="100%"
+        bg="repeating-linear-gradient(45deg, purple.700 0, purple.700 1px, transparent 0, transparent 50%)"
+        backgroundSize="3px 3px"
+        opacity="0.1"
+        animation="static-flicker 10s infinite step-end"
+        zIndex="0"
+      >
+        <style>{staticFlickerKeyframes}</style>
+      </Box>
+
+      {/* Transitioning / Loading State Overlay */}
+      {isTransitioning && (
+        <Center
+          position="absolute"
+          top="0"
+          left="0"
+          width="100%"
+          height="100%"
+          bg="rgba(0,0,0,0.7)" // Semi-transparent overlay
+          zIndex="10"
+          flexDirection="column"
+        >
+          <Image src="/logo192.png" alt="Peeks Logo" boxSize="150px" mb={4} objectFit="contain" />
+          <Spinner size="xl" color="purple.400" mb={4} />
           <Text fontSize="xl" fontWeight="bold" color="white">Entering Peeks...</Text>
         </Center>
-      ) : (
-      <Container maxW="lg">
-        <Box
-          bg="white"
-          rounded="xl"
-          boxShadow="2xl"
-          p={8}
-          bgColor="rgba(255, 255, 255, 0.9)"
-        >
-          <VStack spacing={6} align="stretch">
-            <Flex justify="center" align="center" gap={4}>
-              <Image
-                src="/logo192.png"
-                alt="Logo"
-                boxSize="50px"
-                objectFit="contain"
-              />
-              <Text
-                fontSize="3xl"
-                fontWeight="bold"
-                color="#8B4513"
-                textAlign="center"
-              >
-                Sign Up
-              </Text>
-            </Flex>
+      )}
 
-            <FormControl isRequired>
-              <FormLabel color="#8B4513">Username</FormLabel>
-              <Input
-                type="text"
-                name="username"
-                value={formData.username}
-                onChange={handleChange}
-                placeholder="Enter your username"
-                borderColor="#D2691E"
-                _hover={{ borderColor: '#8B4513' }}
-                _focus={{ borderColor: '#8B4513', boxShadow: '0 0 0 1px #8B4513' }}
-                isInvalid={!!error && error.includes('Username')}
-              />
-              {checkingUsername && <Text color="orange.500" fontSize="sm">Checking username...</Text>}
-              {error && error.includes('Username') && (
-                <Box mt={1}>
-                  <Text color="red.500" fontSize="sm">{error}</Text>
-                  {usernameSuggestions.length > 0 && (
-                    <Text color="gray.500" fontSize="sm">Suggestions: {usernameSuggestions.join(', ')}</Text>
-                  )}
-                </Box>
-              )}
-            </FormControl>
+      {/* Main content box with form */}
+      <Container
+        centerContent
+        maxW="md"
+        py={8}
+        px={6}
+        bg="purple.900"
+        borderRadius="xl"
+        boxShadow="dark-lg"
+        zIndex="1"
+        position="relative"
+      >
+        <VStack spacing={6} align="stretch" w="100%">
+          {/* Logo in main form area (if not transitioning) */}
+          {!isTransitioning && (
+            <Center>
+              <Image src="/logo192.png" alt="Peeks Logo" boxSize="100px" objectFit="contain" />
+            </Center>
+          )}
+          <Text fontSize="3xl" fontWeight="bold" textAlign="center" color="white">
+            Sign Up
+          </Text>
 
-            <FormControl isRequired>
-              <FormLabel color="#8B4513">Email</FormLabel>
-              <Input
-                type="email"
-                name="email"
-                value={formData.email}
-                onChange={handleChange}
-                placeholder="Enter your email"
-                borderColor="#D2691E"
-                _hover={{ borderColor: '#8B4513' }}
-                _focus={{ borderColor: '#8B4513', boxShadow: '0 0 0 1px #8B4513' }}
-              />
-            </FormControl>
+          {error && (
+            <Text color="red.300" textAlign="center" fontSize="sm">
+              {error}
+            </Text>
+          )}
 
-            <FormControl isRequired>
-              <FormLabel color="#8B4513">Password</FormLabel>
-              <Input
-                type="password"
-                name="password"
-                value={formData.password}
-                onChange={handleChange}
-                placeholder="Enter your password"
-                borderColor="#D2691E"
-                _hover={{ borderColor: '#8B4513' }}
-                _focus={{ borderColor: '#8B4513', boxShadow: '0 0 0 1px #8B4513' }}
-              />
-            </FormControl>
-
-            <FormControl isRequired>
-              <FormLabel color="#8B4513">Confirm Password</FormLabel>
-              <Input
-                type="password"
-                name="confirmPassword"
-                value={formData.confirmPassword}
-                onChange={handleChange}
-                placeholder="Confirm your password"
-                borderColor="#D2691E"
-                _hover={{ borderColor: '#8B4513' }}
-                _focus={{ borderColor: '#8B4513', boxShadow: '0 0 0 1px #8B4513' }}
-              />
-            </FormControl>
-
-            <FormControl isRequired>
-              <FormLabel color="#8B4513">Date of Birth</FormLabel>
-              <Input
-                type="date"
-                name="dob"
-                value={formData.dob}
-                onChange={handleChange}
-                borderColor="#D2691E"
-                _hover={{ borderColor: '#8B4513' }}
-                _focus={{ borderColor: '#8B4513', boxShadow: '0 0 0 1px #8B4513' }}
-                max={new Date().toISOString().split('T')[0]}
-              />
-            </FormControl>
-
-            {error && (
-              <Text color="red.500" fontSize="sm" textAlign="center">
-                {error}
+          <FormControl id="username">
+            <FormLabel color="whiteAlpha.800">Username</FormLabel>
+            <Input
+              name="username"
+              type="text"
+              value={formData.username}
+              onChange={handleChange}
+              placeholder="Choose a username"
+              bg="purple.700"
+              borderColor="purple.600"
+              color="white"
+              _placeholder={{ color: 'whiteAlpha.600' }}
+              _hover={{ borderColor: 'purple.400' }}
+              _focus={{ borderColor: 'purple.300', boxShadow: '0 0 0 1px #805AD5' }}
+            />
+            {checkingUsername && (
+              <Text fontSize="sm" color="whiteAlpha.700" mt={1}>
+                Checking username availability... <Spinner size="xs" />
               </Text>
             )}
+            {usernameSuggestions.length > 0 && (
+              <Text fontSize="sm" color="whiteAlpha.700" mt={2}>
+                Suggestions: {usernameSuggestions.join(', ')}
+              </Text>
+            )}
+          </FormControl>
 
-            <Button
-              colorScheme="orange"
-              width="full"
-              onClick={handleSubmit}
-              isLoading={loading}
-              loadingText="Signing up..."
-              bg="#D2691E"
-              _hover={{ bg: '#8B4513' }}
-            >
-              Sign Up 
-            </Button>
+          <FormControl id="email">
+            <FormLabel color="whiteAlpha.800">Email address</FormLabel>
+            <Input
+              name="email"
+              type="email"
+              value={formData.email}
+              onChange={handleChange}
+              placeholder="Enter your email"
+              bg="purple.700"
+              borderColor="purple.600"
+              color="white"
+              _placeholder={{ color: 'whiteAlpha.600' }}
+              _hover={{ borderColor: 'purple.400' }}
+              _focus={{ borderColor: 'purple.300', boxShadow: '0 0 0 1px #805AD5' }}
+            />
+          </FormControl>
 
-              <Divider my={4} />
-              <Text textAlign="center">OR</Text>
+          <FormControl id="password">
+            <FormLabel color="whiteAlpha.800">Password</FormLabel>
+            <Input
+              name="password"
+              type="password"
+              value={formData.password}
+              onChange={handleChange}
+              placeholder="Create a password"
+              bg="purple.700"
+              borderColor="purple.600"
+              color="white"
+              _placeholder={{ color: 'whiteAlpha.600' }}
+              _hover={{ borderColor: 'purple.400' }}
+              _focus={{ borderColor: 'purple.300', boxShadow: '0 0 0 1px #805AD5' }}
+            />
+          </FormControl>
 
-              <Button
-                leftIcon={<Icon viewBox="0 0 24 24" boxSize="24px"><path fill="currentColor" d="M21.2 11.1c-.1-.6-.2-1.1-.4-1.6h-6.8v3.2h3.9c-.2 1.3-.8 2.3-1.7 3l2.6 2c1.5-1.4 2.4-3.3 2.6-5.6zm-7.4 3.8c.9 0 1.7-.3 2.3-.8l2.6 2c-1 1-2.3 1.7-3.8 1.7-2.7 0-5-1.8-5.8-4.2H3v2.1c1.6 3.2 4.8 5.5 8.5 5.5 2.3 0 4.3-.8 5.8-2.1l-2.6-2c-.6.5-1.4.8-2.3.8zm-3.2-8.5V5c0-1.4 1.1-2.5 2.5-2.5S15 3.6 15 5v.4H9.8v2.1h4.4zm-6.5 3.6H3V9.4h5.1c-.2 1.2-.2 2.5 0 3.6z"/></Icon>}
-                colorScheme="gray"
-                width="full"
-                onClick={handleGoogleSignIn}
-                isLoading={loading}
-              >
-                Sign up with Google
-              </Button>
+          <FormControl id="confirmPassword">
+            <FormLabel color="whiteAlpha.800">Confirm Password</FormLabel>
+            <Input
+              name="confirmPassword"
+              type="password"
+              value={formData.confirmPassword}
+              onChange={handleChange}
+              placeholder="Confirm your password"
+              bg="purple.700"
+              borderColor="purple.600"
+              color="white"
+              _placeholder={{ color: 'whiteAlpha.600' }}
+              _hover={{ borderColor: 'purple.400' }}
+              _focus={{ borderColor: 'purple.300', boxShadow: '0 0 0 1px #805AD5' }}
+            />
+          </FormControl>
 
-            <Box textAlign="center">
-              <Link to="/login">Already have an account? Login</Link>
-            </Box>
-          </VStack>
-        </Box>
+          <FormControl id="dob">
+            <FormLabel color="whiteAlpha.800">Date of Birth</FormLabel>
+            <Input
+              name="dob"
+              type="date"
+              value={formData.dob}
+              onChange={handleChange}
+              bg="purple.700"
+              borderColor="purple.600"
+              color="white"
+              _placeholder={{ color: 'whiteAlpha.600' }}
+              _hover={{ borderColor: 'purple.400' }}
+              _focus={{ borderColor: 'purple.300', boxShadow: '0 0 0 1px #805AD5' }}
+            />
+          </FormControl>
+
+          <Button
+            type="submit"
+            colorScheme="purple"
+            isLoading={loading}
+            onClick={handleSubmit}
+            size="lg"
+            fontSize="md"
+            w="100%"
+            mt={4}
+          >
+            Sign Up
+          </Button>
+
+          <Flex align="center" my={4}>
+            <Divider borderColor="whiteAlpha.400" />
+            <Text px={2} fontSize="sm" color="whiteAlpha.700">
+              OR
+            </Text>
+            <Divider borderColor="whiteAlpha.400" />
+          </Flex>
+
+          <Button
+            leftIcon={<Icon as={FaGoogle} />}
+            colorScheme="red"
+            onClick={handleGoogleSignIn}
+            isLoading={loading}
+            size="lg"
+            fontSize="md"
+            w="100%"
+          >
+            Sign up with Google
+          </Button>
+
+          <Text textAlign="center" fontSize="sm" color="whiteAlpha.800">
+            Already have an account?{' '}
+            <Link to="/login" style={{ color: '#E9D8FD', fontWeight: 'bold' }}>
+              Log In
+            </Link>
+          </Text>
+        </VStack>
       </Container>
-      )}
     </Box>
   );
 };

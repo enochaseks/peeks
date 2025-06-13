@@ -368,7 +368,7 @@ const MFAEnrollment = ({ onEnrollmentComplete }) => {
 
             {!showVerificationInput ? (
               <Button
-                colorScheme="orange"
+                colorScheme="purple"
                 width="full"
                 onClick={handleSendCode}
                 isLoading={loading}
@@ -388,7 +388,7 @@ const MFAEnrollment = ({ onEnrollmentComplete }) => {
                 </FormControl>
 
                 <Button
-                  colorScheme="orange"
+                  colorScheme="purple"
                   width="full"
                   onClick={handleVerifyCode}
                   isLoading={loading}
@@ -420,7 +420,7 @@ const MFAEnrollment = ({ onEnrollmentComplete }) => {
                 />
               </FormControl>
               <Button
-                colorScheme="orange"
+                colorScheme="purple"
                 width="full"
                 onClick={handleReauthenticate}
                 isLoading={loading}

@@ -299,7 +299,7 @@ const Livestreaming = ({ stream, onEndLive }) => {
                 <Flex align="flex-start"> {/* Removed redundant key={msg.id} */}
                   <Avatar size="xs" name={msg.username} mr={2} />
                   <Box borderRadius="lg" p={0.5} maxW="80%" > {/* Removed bg="gray.700", reduced padding */}
-                    <Text fontSize="sm" fontWeight="bold" color="orange.300">{msg.username}</Text>
+                    <Text fontSize="sm" fontWeight="bold" color="purple.300">{msg.username}</Text>
                     <Text fontSize="sm">{msg.text}</Text>
                     <Text fontSize="xs" color="gray.400" mt={0} textAlign="right">{msg.createdAt}</Text> {/* Removed mt={1} */}
                   </Box>
@@ -322,7 +322,7 @@ const Livestreaming = ({ stream, onEndLive }) => {
               _placeholder={{ color: 'gray.400' }}
             />
             <InputRightElement width="4.5rem">
-              <Button h="1.75rem" size="sm" onClick={handleCommentSubmit} colorScheme="orange" borderRadius="full">
+              <Button h="1.75rem" size="sm" onClick={handleCommentSubmit} colorScheme="purple" borderRadius="full">
                 <FaPaperPlane />
               </Button>
             </InputRightElement>
